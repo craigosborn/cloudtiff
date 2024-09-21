@@ -1,14 +1,29 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+#![allow(dead_code)] // TODO
+
+use std::fmt::Display;
+use std::io::{Read, Seek};
+
+mod tiff;
+
+use tiff::{Tiff, TiffParseError};
+
+#[derive(Clone, Debug)]
+pub struct CloudTiff {
+    tiff: Tiff,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl CloudTiff {
+    pub fn open<R: Read + Seek>(stream: &mut R) -> Result<Self, TiffParseError> {
+        let tiff = Tiff::open(stream)?;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        // TODO geo tags
+
+        Ok(Self { tiff })
+    }
+}
+
+impl Display for CloudTiff {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.tiff)
     }
 }

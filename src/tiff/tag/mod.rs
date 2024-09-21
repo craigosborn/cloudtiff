@@ -1,0 +1,92 @@
+// refs
+// https://web.archive.org/web/20220119170528/http://www.exif.org/Exif2-2.PDF
+// https://web.archive.org/web/20190624045241if_/http://www.cipa.jp:80/std/documents/e/DC-008-Translation-2019-E.pdf
+// https://www.media.mit.edu/pia/Research/deepview/exif.
+
+use super::Endian;
+use num_enum::{FromPrimitive, IntoPrimitive};
+use std::fmt::Display;
+
+mod id;
+mod value;
+
+pub use id::TagId;
+pub use value::TagValue;
+
+#[derive(Clone, Debug)]
+pub struct Tag {
+    pub id: TagId,
+    pub datatype: TagType,
+    pub count: usize,
+    pub data: Vec<u8>,
+    pub endian: Endian,
+}
+
+impl Tag {
+    pub fn value(&self) -> TagValue {
+        TagValue::from(self)
+    }
+}
+
+impl Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut value_string = format!("{}", self.value());
+        if value_string.len() > 60 {
+            value_string = format!("{}...", &value_string[..57])
+        }
+        write!(
+            f,
+            "{:?} {:?}[{}]: {}",
+            self.id, self.datatype, self.count, value_string
+        )
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, FromPrimitive)]
+#[repr(u16)]
+pub enum TagType {
+    Byte = 1,
+    Ascii = 2,
+    Short = 3,
+    Long = 4,
+    Rational = 5,
+    SByte = 6,
+    Undefined = 7,
+    SShort = 8,
+    SLong = 9,
+    SRational = 10,
+    Float = 11,
+    Double = 12,
+    IFD = 13,
+    Long8 = 16,
+    SLong8 = 17,
+    IFD8 = 18,
+
+    #[num_enum(default)]
+    Unknown = 0xFFFF,
+}
+
+impl TagType {
+    pub fn size_in_bytes(&self) -> usize {
+        match self {
+            TagType::Byte => 1,
+            TagType::Ascii => 1,
+            TagType::Short => 2,
+            TagType::Long => 4,
+            TagType::Rational => 8,
+            TagType::SByte => 1,
+            TagType::Undefined => 1,
+            TagType::SShort => 2,
+            TagType::SLong => 4,
+            TagType::SRational => 8,
+            TagType::Float => 4,
+            TagType::Double => 8,
+            TagType::IFD => 4,
+            TagType::Long8 => 8,
+            TagType::SLong8 => 8,
+            TagType::IFD8 => 8,
+
+            TagType::Unknown => 1,
+        }
+    }
+}

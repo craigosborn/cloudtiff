@@ -2,5 +2,12 @@
 name = "cloudtiff"
 version = "0.1.0"
 edition = "2021"
+authors = ["Craig Osborn <craig@craigosborn.dev>"]
+description = "A Cloud Optimized GeoTIFF library for Rust"
+
+[profile.dev]
+opt-level = 3
 
 [dependencies]
+eio = "0.1.2"
+num_enum = "0.7.3"
