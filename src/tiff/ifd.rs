@@ -1,4 +1,4 @@
-use super::tag::{Tag, TagId, TagType};
+use super::tag::{Tag, TagType};
 use super::Endian;
 use super::Variant;
 use std::io::{Read, Result, Seek, SeekFrom};
@@ -22,7 +22,7 @@ impl Ifd {
 
         let mut tags = Vec::with_capacity(tag_count as usize);
         for _ in 0..tag_count {
-            let id: TagId = endian.read::<2, u16>(stream)?.into();
+            let code = endian.read(stream)?;
             let datatype: TagType = endian.read::<2, u16>(stream)?.into();
             let count = variant.read_offset(endian, stream)? as usize;
 
@@ -44,7 +44,7 @@ impl Ifd {
             }
 
             tags.push(Tag {
-                id,
+                code,
                 datatype,
                 endian,
                 count,
@@ -56,5 +56,11 @@ impl Ifd {
         let next_ifd_offset = variant.read_offset(endian, stream)? as u64;
 
         Ok((ifd, next_ifd_offset))
+    }
+
+    pub fn get_tag(&self, code: u16) -> Option<&Tag> {
+        // TODO would a HashMap be better
+        let Self(tags) = &self;
+        tags.iter().find(|tag|tag.code == code)
     }
 }

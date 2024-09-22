@@ -7,8 +7,9 @@ mod ifd;
 mod tag;
 
 pub use endian::Endian;
-pub use error::TiffParseError;
+pub use error::TiffError;
 pub use ifd::Ifd;
+pub use tag::{Tag, TagId, TagType};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Variant {
@@ -39,7 +40,7 @@ pub struct Tiff {
 }
 
 impl Tiff {
-    pub fn open<R: Read + Seek>(stream: &mut R) -> Result<Self, TiffParseError> {
+    pub fn open<R: Read + Seek>(stream: &mut R) -> Result<Self, TiffError> {
         // TIFF Header
         let mut buf = [0; 4];
         stream.read_exact(&mut buf)?;
@@ -47,13 +48,13 @@ impl Tiff {
         let endian = match &buf[..2] {
             b"II" => Endian::Little,
             b"MM" => Endian::Big,
-            _ => return Err(TiffParseError::BadMagicBytes),
+            _ => return Err(TiffError::BadMagicBytes),
         };
 
         let variant = match &buf[2..4] {
             b"\0*" | b"*\0" => Variant::Normal,
             b"\0+" | b"+\0" => Variant::Big,
-            _ => return Err(TiffParseError::BadMagicBytes),
+            _ => return Err(TiffError::BadMagicBytes),
         };
 
         if Variant::Big == variant {
@@ -77,14 +78,23 @@ impl Tiff {
             ifds,
         })
     }
+
+    pub fn ifd0(&self) -> Result<&Ifd, TiffError> {
+        if self.ifds.len() > 0 {
+            Ok(&self.ifds[0])
+        } else {
+            Err(TiffError::NoIfd0)
+        }
+    }
 }
 
 impl Display for Tiff {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Tiff: {{{:?} Endian, {:?} Variant}}", self.endian,self.variant)?;
         for (i, ifd) in self.ifds.iter().enumerate() {
-            writeln!(f, "IFD {i}:")?;
+            writeln!(f, "  IFD {i}:")?;
             for tag in ifd.0.iter() {
-                writeln!(f, "\t{}", tag)?;
+                writeln!(f, "    {}", tag)?;
             }
         }
         Ok(())

@@ -10,6 +10,15 @@ pub enum TagValue {
     Undefined,
 }
 
+impl TagValue {
+    pub fn to_array<const N: usize>(self) -> Option<[f64; N]> {
+        match self {
+            TagValue::Array(vec) => vec.try_into().ok(),
+            _ => None,
+        }
+    }
+}
+
 impl Display for TagValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let fmt_num = |v: f64| {

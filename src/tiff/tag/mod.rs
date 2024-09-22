@@ -4,6 +4,7 @@
 // https://www.media.mit.edu/pia/Research/deepview/exif.
 
 use super::Endian;
+use eio::FromBytes;
 use num_enum::{FromPrimitive, IntoPrimitive};
 use std::fmt::Display;
 
@@ -15,7 +16,7 @@ pub use value::TagValue;
 
 #[derive(Clone, Debug)]
 pub struct Tag {
-    pub id: TagId,
+    pub code: u16,
     pub datatype: TagType,
     pub count: usize,
     pub data: Vec<u8>,
@@ -23,21 +24,38 @@ pub struct Tag {
 }
 
 impl Tag {
+    pub fn id(&self) -> Option<TagId> {
+        TagId::try_from(self.code).ok()
+    }
     pub fn value(&self) -> TagValue {
         TagValue::from(self)
+    }
+    pub fn raw_values<const N: usize, T: FromBytes<N>>(&self) -> Vec<Option<T>> {
+        self.data
+            .chunks_exact(self.datatype.size_in_bytes())
+            .map(|c| {
+                c.try_into()
+                    .ok()
+                    .and_then(|arr| self.endian.parse(arr).ok())
+            })
+            .collect()
     }
 }
 
 impl Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut value_string = format!("{}", self.value());
-        if value_string.len() > 60 {
-            value_string = format!("{}...", &value_string[..57])
+        if value_string.len() > 100 {
+            value_string = format!("{}...", &value_string[..98])
         }
+        let id_string = match self.id() {
+            Some(id) => format!("{id:?}"),
+            None => format!("Unknown({})", self.code),
+        };
         write!(
             f,
-            "{:?} {:?}[{}]: {}",
-            self.id, self.datatype, self.count, value_string
+            "{} {:?}[{}]: {}",
+            id_string, self.datatype, self.count, value_string
         )
     }
 }

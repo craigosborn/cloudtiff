@@ -1,8 +1,8 @@
 // https://docs.ogc.org/is/19-008r4/19-008r4.html#_geotiff_tags_for_coordinate_transformations
 
-use num_enum::{FromPrimitive, IntoPrimitive};
+use num_enum::{TryFromPrimitive, IntoPrimitive};
 
-#[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, FromPrimitive)]
+#[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, TryFromPrimitive)]
 #[repr(u16)]
 pub enum TagId {
     SubfileType = 0x00FE,
@@ -35,7 +35,4 @@ pub enum TagId {
     GeoAsciiParams = 0x87B1,
     GDALMetadata = 0xA480,
     GDALNoData = 0xA481,
-
-    #[num_enum(default)]
-    Unknown = 0xFFFF,
 }

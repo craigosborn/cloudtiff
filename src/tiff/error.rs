@@ -1,13 +1,14 @@
 use std::io;
 
-#[derive(PartialEq, Clone, Debug)]
-pub enum TiffParseError {
+#[derive(Debug)]
+pub enum TiffError {
     BadMagicBytes,
-    ReadError,
+    NoIfd0,
+    ReadError(io::Error),
 }
 
-impl From<io::Error> for TiffParseError {
-    fn from(_: io::Error) -> Self {
-        TiffParseError::ReadError
+impl From<io::Error> for TiffError {
+    fn from(e: io::Error) -> Self {
+        TiffError::ReadError(e)
     }
 }
