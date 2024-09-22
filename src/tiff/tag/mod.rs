@@ -6,13 +6,12 @@
 use super::Endian;
 use eio::FromBytes;
 use num_enum::{FromPrimitive, IntoPrimitive};
+use num_traits::{cast::NumCast, ToPrimitive};
 use std::fmt::Display;
 
 mod id;
-mod value;
 
 pub use id::TagId;
-pub use value::TagValue;
 
 #[derive(Clone, Debug)]
 pub struct Tag {
@@ -27,28 +26,102 @@ impl Tag {
     pub fn id(&self) -> Option<TagId> {
         TagId::try_from(self.code).ok()
     }
-    pub fn value(&self) -> TagValue {
-        TagValue::from(self)
+
+    pub fn value<T: NumCast + Copy>(&self) -> Option<T> {
+        match self.values() {
+            Some(v) if v.len() == 1 => Some(v[0]),
+            _ => None,
+        }
     }
-    pub fn raw_values<const N: usize, T: FromBytes<N>>(&self) -> Vec<Option<T>> {
-        // Does not coerce, will be None if requested type is not datatype
+
+    pub fn values<T: NumCast>(&self) -> Option<Vec<T>> {
+        match self.datatype {
+            TagType::Byte => self.decode::<1, u8, T>(),
+            TagType::Ascii => self.decode::<1, u8, T>(),
+            TagType::Short => self.decode::<2, u16, T>(),
+            TagType::Long => self.decode::<4, u32, T>(),
+            TagType::SByte => self.decode::<1, i8, T>(),
+            TagType::Undefined => self.decode::<1, u8, T>(),
+            TagType::SShort => self.decode::<2, i16, T>(),
+            TagType::SLong => self.decode::<4, i32, T>(),
+            TagType::Float => self.decode::<4, f32, T>(),
+            TagType::Double => self.decode::<8, f64, T>(),
+            TagType::Ifd => self.decode::<4, u32, T>(),
+            TagType::Long8 => self.decode::<8, u64, T>(),
+            TagType::SLong8 => self.decode::<8, i64, T>(),
+            TagType::Ifd8 => self.decode::<8, u64, T>(),
+            TagType::Unknown => self.decode::<1, u8, T>(),
+            TagType::Rational => self.decode_rational::<4, u32, T>(),
+            TagType::SRational => self.decode_rational::<4, i32, T>(),
+        }
+    }
+
+    pub fn try_to_string(&self) -> Option<String> {
+        match self.datatype {
+            TagType::Ascii | TagType::Byte | TagType::Unknown => {
+                String::from_utf8(self.data.clone()).ok()
+            }
+            _ => None,
+        }
+    }
+
+    pub fn as_string_lossy(&self) -> String {
+        match self.datatype {
+            TagType::Ascii => String::from_utf8_lossy(&self.data).into_owned(),
+            TagType::Float | TagType::Double | TagType::Rational | TagType::SRational => {
+                match self.values::<f64>() {
+                    Some(v) if v.len() == 1 => format!("{}", v[0]),
+                    Some(v) => format!("{:?}", v),
+                    None => format!("Undefined"),
+                }
+            }
+            _ => match self.values::<i64>() {
+                Some(v) if v.len() == 1 => format!("{}", v[0]),
+                Some(v) => format!("{:?}", v),
+                None => format!("Undefined"),
+            },
+        }
+    }
+
+    fn decode<const N: usize, A: FromBytes<N> + ToPrimitive, T: NumCast>(&self) -> Option<Vec<T>> {
+        self.endian.decode_all_to_primative::<N, A, T>(&self.data)
+    }
+
+    fn decode_rational<const N: usize, A: FromBytes<N> + ToPrimitive, T: NumCast>(
+        &self,
+    ) -> Option<Vec<T>> {
         self.data
-            .chunks_exact(self.datatype.size_in_bytes())
-            .map(|c| {
-                c.try_into()
+            .chunks_exact(2 * N)
+            .map(|chunk| {
+                chunk[..N]
+                    .try_into()
                     .ok()
-                    .and_then(|arr| self.endian.decode(arr).ok())
+                    .and_then(|arr| {
+                        self.endian
+                            .decode::<N, A>(arr)
+                            .ok()
+                            .and_then(|v| v.to_f64())
+                    })
+                    .and_then(|numerator| {
+                        chunk[N..]
+                            .try_into()
+                            .ok()
+                            .and_then(|arr| {
+                                self.endian
+                                    .decode::<N, A>(arr)
+                                    .ok()
+                                    .and_then(|v| v.to_f64())
+                            })
+                            .and_then(|denominator| T::from(numerator / denominator))
+                    })
             })
             .collect()
-    }
-    pub fn try_raw_values<const N: usize, T: FromBytes<N>>(&self) -> Option<Vec<T>> {
-        self.raw_values().into_iter().collect()
     }
 }
 
 impl Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut value_string = format!("{}", self.value());
+        let mut value_string = format!("{}", self.as_string_lossy());
         if value_string.len() > 100 {
             value_string = format!("{}...", &value_string[..98])
         }
@@ -89,7 +162,7 @@ pub enum TagType {
 }
 
 impl TagType {
-    pub fn size_in_bytes(&self) -> usize {
+    pub const fn size_in_bytes(&self) -> usize {
         match self {
             TagType::Byte => 1,
             TagType::Ascii => 1,

@@ -1,4 +1,4 @@
-use eio::FromBytes;
+use num_traits::NumCast;
 
 use super::{Endian, Tag, TagId, TagType, TiffError, Tile, Variant};
 use std::io::{self, Read, Seek, SeekFrom};
@@ -13,13 +13,16 @@ impl Ifd {
         endian: Endian,
         variant: Variant,
     ) -> io::Result<(Ifd, u64)> {
+        // IFD starts at offset
         stream.seek(SeekFrom::Start(offset))?;
 
+        // IFD header is just the number of tags
         let tag_count = match variant {
             Variant::Normal => endian.read::<2, u16>(stream)? as u64,
             Variant::Big => endian.read(stream)?,
         };
 
+        // Parse each tag in the IFD
         let mut tags = Vec::with_capacity(tag_count as usize);
         for _ in 0..tag_count {
             let code = endian.read(stream)?;
@@ -58,51 +61,25 @@ impl Ifd {
         Ok((ifd, next_ifd_offset))
     }
 
-    pub fn get_tag(&self, code: u16) -> Option<&Tag> {
-        // TODO would a HashMap be better
+    pub fn get_tag_by_code(&self, code: u16) -> Option<&Tag> {
         let Self(tags) = &self;
         tags.iter().find(|tag| tag.code == code)
     }
 
-    pub fn get_required_tag(&self, id: TagId) -> Result<&Tag, TiffError> {
-        self.get_tag(id.into()).ok_or(TiffError::MissingTag(id))
+    pub fn get_tag(&self, id: TagId) -> Result<&Tag, TiffError> {
+        let code = id.into();
+        let Self(tags) = &self;
+        tags.iter()
+            .find(|tag| tag.code == code)
+            .ok_or(TiffError::MissingTag(id))
     }
 
-    pub fn get_required_tag_values<const N: usize, T: FromBytes<N> + Copy>(
-        &self,
-        id: TagId,
-    ) -> Result<Vec<T>, TiffError> {
-        self.get_required_tag(id)?
-            .try_raw_values()
-            .ok_or(TiffError::BadTag(id))
+    pub fn get_tag_values<T: NumCast>(&self, id: TagId) -> Result<Vec<T>, TiffError> {
+        self.get_tag(id)?.values().ok_or(TiffError::BadTag(id))
     }
 
-    pub fn get_required_tag_value<const N: usize, T: FromBytes<N> + Copy>(
-        &self,
-        id: TagId,
-    ) -> Result<T, TiffError> {
-        let values = self.get_required_tag_values(id)?;
-        if values.len() == 1 {
-            Ok(values[0])
-        } else {
-            Err(TiffError::BadTag(id))
-        }
-    }
-
-    pub fn get_required_tag_number(&self, id: TagId) -> Result<f64, TiffError> {
-        // TODO casting to and from f64 is not optimal
-        self.get_required_tag(id)?
-            .value()
-            .into_number()
-            .ok_or(TiffError::BadTag(id))
-    }
-
-    pub fn get_required_tag_vec(&self, id: TagId) -> Result<Vec<f64>, TiffError> {
-        // TODO casting to and from f64 is not optimal
-        self.get_required_tag(id)?
-            .value()
-            .into_vec()
-            .ok_or(TiffError::BadTag(id))
+    pub fn get_tag_value<T: NumCast + Copy>(&self, id: TagId) -> Result<T, TiffError> {
+        self.get_tag(id)?.value().ok_or(TiffError::BadTag(id))
     }
 
     pub fn get_tile<R: Read + Seek>(
@@ -110,25 +87,17 @@ impl Ifd {
         stream: &mut R,
         tile_index: usize,
     ) -> Result<Tile, TiffError> {
-        let compression = self.get_required_tag_value(TagId::Compression)?;
-        let bits_per_sample = self.get_required_tag_values(TagId::BitsPerSample)?;
-        let photometric_interpretation =
-            self.get_required_tag_value(TagId::PhotometricInterpretation)?;
-        let tile_width: u16 = self.get_required_tag_value(TagId::TileWidth)?;
-        let tile_length: u16 = self.get_required_tag_value(TagId::TileLength)?;
-        let tile_offsets: Vec<u64> = self
-            .get_required_tag_vec(TagId::TileOffsets)?
-            .into_iter()
-            .map(|v| v as u64)
-            .collect();
-        let tile_byte_counts: Vec<usize> = self
-            .get_required_tag_vec(TagId::TileByteCounts)?
-            .into_iter()
-            .map(|v| v as usize)
-            .collect();
+        // Required tags
+        let compression = self.get_tag_value(TagId::Compression)?;
+        let bits_per_sample = self.get_tag_values(TagId::BitsPerSample)?;
+        let photometric_interpretation = self.get_tag_value(TagId::PhotometricInterpretation)?;
+        let tile_width = self.get_tag_value(TagId::TileWidth)?;
+        let tile_length = self.get_tag_value(TagId::TileLength)?;
+        let tile_offsets = self.get_tag_values(TagId::TileOffsets)?;
+        let byte_counts = self.get_tag_values(TagId::TileByteCounts)?;
 
         // Validate tile_index
-        let max_valid_tile_index = tile_offsets.len().min(tile_byte_counts.len()) - 1;
+        let max_valid_tile_index = tile_offsets.len().min(byte_counts.len()) - 1;
         if tile_index > max_valid_tile_index {
             return Err(TiffError::TileOutOfRange((
                 tile_index,
@@ -136,10 +105,12 @@ impl Ifd {
             )));
         }
 
+        // Indexed tile
         let offset = tile_offsets[tile_index];
-        let byte_count = tile_byte_counts[tile_index];
+        let byte_count = byte_counts[tile_index];
         let mut data = vec![0; byte_count];
 
+        // Tile bytes
         stream.seek(SeekFrom::Start(offset))?;
         stream.read_exact(&mut data)?;
 

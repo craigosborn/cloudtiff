@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::{get_required_tag, GeoKeyId, GeoKeyValue, GeoTiffError};
+use super::{get_geo_tag_values, GeoKeyId, GeoKeyValue, GeoTiffError};
 use crate::tiff::{Ifd, TagId, TagType};
 
 #[derive(Clone, Debug)]
@@ -25,27 +25,27 @@ impl GeoKey {
 
 impl GeoKeyDirectory {
     pub fn parse(ifd: &Ifd) -> Result<Self, GeoTiffError> {
-        let directory_tag = get_required_tag(ifd, TagId::GeoKeyDirectory)?;
-        let Some(directory_values) = directory_tag
-            .raw_values()
-            .into_iter()
-            .collect::<Option<Vec<u16>>>()
-        else {
-            return Err(GeoTiffError::BadTag(TagId::GeoKeyDirectory));
-        };
+        // Directory is a tiff tag
+        let directory_values = get_geo_tag_values(ifd, TagId::GeoKeyDirectory)?;
+
+        // Directory size validation
         if directory_values.len() < 4 {
             return Err(GeoTiffError::BadTag(TagId::GeoKeyDirectory));
         }
+
+        // Directory header
         let version: u16 = directory_values[0];
         let revision: u16 = directory_values[1];
         let minor_revision: u16 = directory_values[2];
         let key_count: u16 = directory_values[3];
 
+        // Directory size validation
         let min_valid_directory_size = 4 + key_count * 4;
         if directory_values.len() < min_valid_directory_size as usize {
             return Err(GeoTiffError::BadTag(TagId::GeoKeyDirectory));
         }
 
+        // Parse keys
         let keys: Vec<GeoKey> = (0..key_count as usize)
             .map(|i| {
                 let entry_offset = (i + 1) * 4;
@@ -57,26 +57,21 @@ impl GeoKeyDirectory {
                 let value = if location == 0 {
                     GeoKeyValue::Short(vec![offset])
                 } else {
-                    // TODO slice then raw_values() would increase performance
                     let start = offset as usize;
                     let end = (offset + count) as usize;
-                    let tag = ifd.get_tag(location);
+                    let tag = ifd.get_tag_by_code(location);
                     tag.and_then(|tag| match tag.datatype {
-                        TagType::Ascii => String::from_utf8(tag.data.clone()).ok().map(|s| {
+                        TagType::Ascii => tag.try_to_string().map(|s| {
                             GeoKeyValue::Ascii(
                                 s.trim_end_matches(|c| c == '|' || c == '\0').to_string(),
                             )
                         }),
-                        TagType::Short => tag.raw_values()[start..end]
-                            .into_iter()
-                            .cloned()
-                            .collect::<Option<Vec<_>>>()
-                            .map(|v| GeoKeyValue::Short(v)),
-                        TagType::Double => tag.raw_values()[start..end]
-                            .into_iter()
-                            .cloned()
-                            .collect::<Option<Vec<_>>>()
-                            .map(|v| GeoKeyValue::Double(v)),
+                        TagType::Short => tag
+                            .values()
+                            .map(|v| GeoKeyValue::Short(v[start..end].to_vec())),
+                        TagType::Double => tag
+                            .values()
+                            .map(|v| GeoKeyValue::Double(v[start..end].to_vec())),
                         _ => None,
                     })
                     .unwrap_or(GeoKeyValue::Undefined)

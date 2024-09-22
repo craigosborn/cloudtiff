@@ -12,6 +12,7 @@ mod value;
 pub use error::GeoTiffError;
 pub use id::GeoKeyId;
 pub use keys::GeoKeyDirectory;
+use num_traits::NumCast;
 pub use value::GeoKeyValue;
 
 #[derive(Clone, Debug)]
@@ -43,8 +44,8 @@ impl Display for Geo {
 
 impl Geo {
     pub fn parse(ifd: &Ifd) -> Result<Self, GeoTiffError> {
-        let tiepoint = get_required_array_tag(ifd, TagId::ModelTiepoint)?;
-        let pixel_scale = get_required_array_tag(ifd, TagId::ModelPixelScale)?;
+        let tiepoint = get_tag_as_array(ifd, TagId::ModelTiepoint)?;
+        let pixel_scale = get_tag_as_array(ifd, TagId::ModelPixelScale)?;
 
         let directory = keys::GeoKeyDirectory::parse(ifd)?;
 
@@ -56,13 +57,23 @@ impl Geo {
     }
 }
 
-fn get_required_array_tag<const N: usize>(ifd: &Ifd, id: TagId) -> Result<[f64; N], GeoTiffError> {
-    get_required_tag(ifd, id)?
-        .value()
-        .into_array()
+// Methods for accessing tiff tags with geotiff errors
+fn get_geo_tag(ifd: &Ifd, id: TagId) -> Result<&Tag, GeoTiffError> {
+    ifd.get_tag(id).ok().ok_or(GeoTiffError::MissingTag(id))
+}
+
+fn get_geo_tag_values<T: NumCast>(ifd: &Ifd, id: TagId) -> Result<Vec<T>, GeoTiffError> {
+    get_geo_tag(ifd, id)?
+        .values()
         .ok_or(GeoTiffError::BadTag(id))
 }
 
-fn get_required_tag(ifd: &Ifd, id: TagId) -> Result<&Tag, GeoTiffError> {
-    ifd.get_tag(id.into()).ok_or(GeoTiffError::MissingTag(id))
+fn get_tag_as_array<const N: usize, T: NumCast>(
+    ifd: &Ifd,
+    id: TagId,
+) -> Result<[T; N], GeoTiffError> {
+    get_geo_tag_values::<T>(ifd, id)?
+        .try_into()
+        .ok()
+        .ok_or(GeoTiffError::BadTag(id))
 }

@@ -40,8 +40,8 @@ impl CloudTiff {
         let ifd = ifds
             .get(level)
             .ok_or(CloudTiffError::InvalidIndex((level, ifds.len())))?;
-        let image_width: u16 = ifd.get_required_tag_value(TagId::ImageWidth)?;
-        let tile_width: u16 = ifd.get_required_tag_value(TagId::TileWidth)?;
+        let image_width: u16 = ifd.get_tag_value(TagId::ImageWidth)?;
+        let tile_width: u16 = ifd.get_tag_value(TagId::TileWidth)?;
         let max_col = (image_width as f32 / tile_width as f32).ceil() as usize;
         let tile_index = col * max_col + row;
         println!("tile_index: {tile_index}");
