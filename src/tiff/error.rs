@@ -9,7 +9,6 @@ pub enum TiffError {
     ReadError(io::Error),
     MissingTag(TagId),
     BadTag(TagId),
-    TileOutOfRange((usize, usize)),
 }
 
 impl From<io::Error> for TiffError {

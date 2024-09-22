@@ -1,35 +1,32 @@
+use crate::endian::Endian;
 use std::fmt::Display;
 use std::io::{self, Read, Seek};
 
-mod endian;
 mod error;
 mod ifd;
 mod tag;
-mod tile;
 
-pub use endian::Endian;
 pub use error::TiffError;
 pub use ifd::Ifd;
 pub use tag::{Tag, TagId, TagType};
-pub use tile::Tile;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
-pub enum Variant {
+pub enum TiffVariant {
     Normal,
     Big,
 }
 
-impl Variant {
+impl TiffVariant {
     fn read_offset<R: Read>(&self, endian: Endian, stream: &mut R) -> io::Result<u64> {
         match self {
-            Variant::Normal => endian.read::<4, u32>(stream).map(|v| v as u64),
-            Variant::Big => endian.read(stream),
+            TiffVariant::Normal => endian.read::<4, u32>(stream).map(|v| v as u64),
+            TiffVariant::Big => endian.read(stream),
         }
     }
     const fn offset_bytesize(&self) -> usize {
         match self {
-            Variant::Normal => 4,
-            Variant::Big => 8,
+            TiffVariant::Normal => 4,
+            TiffVariant::Big => 8,
         }
     }
 }
@@ -37,7 +34,7 @@ impl Variant {
 #[derive(Clone, Debug)]
 pub struct Tiff {
     pub endian: Endian,
-    pub variant: Variant,
+    pub variant: TiffVariant,
     pub ifds: Vec<Ifd>,
 }
 
@@ -54,12 +51,12 @@ impl Tiff {
         };
 
         let variant = match &buf[2..4] {
-            b"\0*" | b"*\0" => Variant::Normal,
-            b"\0+" | b"+\0" => Variant::Big,
+            b"\0*" | b"*\0" => TiffVariant::Normal,
+            b"\0+" | b"+\0" => TiffVariant::Big,
             _ => return Err(TiffError::BadMagicBytes),
         };
 
-        if Variant::Big == variant {
+        if TiffVariant::Big == variant {
             // BigTIFFs have 4 extra bytes in the header
             let _offset_bytesize: u16 = endian.read(stream)?; // 0x0008
             let _: u16 = endian.read(stream)?; // 0x0000

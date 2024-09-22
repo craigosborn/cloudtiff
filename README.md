@@ -4,25 +4,46 @@ A Cloud Optimized GeoTIFF library for Rust
 
 ### Goals
 
-* Fast
-* Correct writer
-* Robust reader
-* Rust only
 * COG focused
+* Fast
+* Robust reader
+* Correct writer
+* Rust only
 
 ### Features
 
 - [x] TIFF decoding without extracting 
-- [ ] Tile extraction and decompression
+- [x] Tile extraction and decompression
 - [ ] Georeferencing from tags
 - [ ] WMS rendering
 - [ ] WMTS rendering
 - [ ] Encoding
 
+### Limitations
+
+* Predictor supports None or Horizontal 8bit
+* Decompression supports None or Lzw or Deflate
+
 
 ## Use
 
-TBD
+```rs
+use cloudtiff::CloudTiff;
+use image::DynamicImage;
+use std::fs::File;
+use std::io::BufReader;
+
+fn save_preview(file: File) {
+    let reader = &mut BufReader::new(file);
+    let cog = CloudTiff::open(reader).unwrap();
+
+    let tile = cog.get_tile(cog.max_level(), 0, 0).unwrap();
+    let raster = tile.extract(reader).unwrap();
+
+    let img: DynamicImage = raster.try_into().unwrap();
+    img.save("preview.jpg").unwrap();
+}
+```
 
 ## Dev
 
@@ -36,7 +57,7 @@ aws s3 cp --no-sign-request s3://sentinel-cogs/sentinel-s2-l2a-cogs/9/U/WA/2024/
 
 Run the example:
 ```
-cargo run
+cargo run --example filesystem
 ```
 
 ### Design Principle

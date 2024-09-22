@@ -1,6 +1,6 @@
 use num_traits::NumCast;
 
-use super::{Endian, Tag, TagId, TagType, TiffError, Tile, Variant};
+use super::{Endian, Tag, TagId, TagType, TiffError, TiffVariant};
 use std::io::{self, Read, Seek, SeekFrom};
 
 #[derive(Clone, Debug)]
@@ -11,15 +11,15 @@ impl Ifd {
         stream: &mut R,
         offset: u64,
         endian: Endian,
-        variant: Variant,
+        variant: TiffVariant,
     ) -> io::Result<(Ifd, u64)> {
         // IFD starts at offset
         stream.seek(SeekFrom::Start(offset))?;
 
         // IFD header is just the number of tags
         let tag_count = match variant {
-            Variant::Normal => endian.read::<2, u16>(stream)? as u64,
-            Variant::Big => endian.read(stream)?,
+            TiffVariant::Normal => endian.read::<2, u16>(stream)? as u64,
+            TiffVariant::Big => endian.read(stream)?,
         };
 
         // Parse each tag in the IFD
@@ -80,47 +80,5 @@ impl Ifd {
 
     pub fn get_tag_value<T: NumCast + Copy>(&self, id: TagId) -> Result<T, TiffError> {
         self.get_tag(id)?.value().ok_or(TiffError::BadTag(id))
-    }
-
-    pub fn get_tile<R: Read + Seek>(
-        &self,
-        stream: &mut R,
-        tile_index: usize,
-    ) -> Result<Tile, TiffError> {
-        // Required tags
-        let compression = self.get_tag_value(TagId::Compression)?;
-        let bits_per_sample = self.get_tag_values(TagId::BitsPerSample)?;
-        let photometric_interpretation = self.get_tag_value(TagId::PhotometricInterpretation)?;
-        let tile_width = self.get_tag_value(TagId::TileWidth)?;
-        let tile_length = self.get_tag_value(TagId::TileLength)?;
-        let tile_offsets = self.get_tag_values(TagId::TileOffsets)?;
-        let byte_counts = self.get_tag_values(TagId::TileByteCounts)?;
-
-        // Validate tile_index
-        let max_valid_tile_index = tile_offsets.len().min(byte_counts.len()) - 1;
-        if tile_index > max_valid_tile_index {
-            return Err(TiffError::TileOutOfRange((
-                tile_index,
-                max_valid_tile_index,
-            )));
-        }
-
-        // Indexed tile
-        let offset = tile_offsets[tile_index];
-        let byte_count = byte_counts[tile_index];
-        let mut data = vec![0; byte_count];
-
-        // Tile bytes
-        stream.seek(SeekFrom::Start(offset))?;
-        stream.read_exact(&mut data)?;
-
-        Ok(Tile {
-            width: tile_width,
-            height: tile_length,
-            compression,
-            bits_per_sample,
-            photometric_interpretation,
-            data,
-        })
     }
 }

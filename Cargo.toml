@@ -5,10 +5,16 @@ edition = "2021"
 authors = ["Craig Osborn <craig@craigosborn.dev>"]
 description = "A Cloud Optimized GeoTIFF library for Rust"
 
+[features]
+default = ["image"]
+
 [profile.dev]
 opt-level = 3
 
 [dependencies]
 eio = "0.1.2"
+miniz_oxide = "0.8.0"
 num-traits = "0.2.19"
 num_enum = "0.7.3"
+salzweg = "0.1.4"
+image = { version = "0.25.2", optional = true }
