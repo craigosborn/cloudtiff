@@ -11,9 +11,33 @@ pub enum TagValue {
 }
 
 impl TagValue {
-    pub fn to_array<const N: usize>(self) -> Option<[f64; N]> {
+    pub fn is_valid<const N: usize>(self) -> bool {
+        match self {
+            TagValue::String(_) | TagValue::Number(_) | TagValue::Array(_) => true,
+            _ => false,
+        }
+    }
+    pub fn into_array<const N: usize>(self) -> Option<[f64; N]> {
         match self {
             TagValue::Array(vec) => vec.try_into().ok(),
+            _ => None,
+        }
+    }
+    pub fn into_vec(self) -> Option<Vec<f64>> {
+        match self {
+            TagValue::Array(vec) => Some(vec),
+            _ => None,
+        }
+    }
+    pub fn into_number<T: From<f64>>(self) -> Option<T> {
+        match self {
+            TagValue::Number(v) => Some(T::from(v)),
+            _ => None,
+        }
+    }
+    pub fn into_string(self) -> Option<String> {
+        match self {
+            TagValue::String(s) => Some(s),
             _ => None,
         }
     }
@@ -64,7 +88,7 @@ impl From<&Tag> for TagValue {
             (TagType::Short, 1) => match tag.data[..]
                 .try_into()
                 .ok()
-                .and_then(|arr| tag.endian.parse::<2, u16>(arr).ok())
+                .and_then(|arr| tag.endian.decode::<2, u16>(arr).ok())
             {
                 Some(v) => TagValue::Number(v as f64),
                 None => TagValue::Undefined,
@@ -75,7 +99,7 @@ impl From<&Tag> for TagValue {
                     .map(|c| {
                         c.try_into()
                             .ok()
-                            .and_then(|arr| tag.endian.parse::<2, u16>(arr).map(|v| v as f64).ok())
+                            .and_then(|arr| tag.endian.decode::<2, u16>(arr).map(|v| v as f64).ok())
                             .unwrap_or(f64::NAN)
                     })
                     .collect::<Vec<_>>(),
@@ -83,7 +107,7 @@ impl From<&Tag> for TagValue {
             (TagType::Long, 1) => match tag.data[..]
                 .try_into()
                 .ok()
-                .and_then(|arr| tag.endian.parse::<4, u32>(arr).ok())
+                .and_then(|arr| tag.endian.decode::<4, u32>(arr).ok())
             {
                 Some(v) => TagValue::Number(v as f64),
                 None => TagValue::Undefined,
@@ -96,7 +120,7 @@ impl From<&Tag> for TagValue {
                             .ok()
                             .and_then(|arr| // chunk_exact(4) guarantees [u8; 4]
                         tag.endian
-                            .parse::<4,u32>(arr)
+                            .decode::<4,u32>(arr)
                             .map(|v| v as f64).ok())
                             .unwrap_or(f64::NAN)
                     })
@@ -106,13 +130,13 @@ impl From<&Tag> for TagValue {
                 let numerator = tag.data[0..4]
                     .try_into()
                     .ok()
-                    .and_then(|arr| tag.endian.parse::<4, u32>(arr).ok().map(|v| v as f64))
+                    .and_then(|arr| tag.endian.decode::<4, u32>(arr).ok().map(|v| v as f64))
                     .unwrap_or(f64::NAN);
 
                 let denominator = tag.data[4..8]
                     .try_into()
                     .ok()
-                    .and_then(|arr| tag.endian.parse::<4, u32>(arr).ok().map(|v| v as f64))
+                    .and_then(|arr| tag.endian.decode::<4, u32>(arr).ok().map(|v| v as f64))
                     .unwrap_or(f64::NAN);
 
                 TagValue::Number(numerator / denominator)
@@ -124,13 +148,13 @@ impl From<&Tag> for TagValue {
                         let numerator = c[0..4]
                             .try_into()
                             .ok()
-                            .and_then(|arr| tag.endian.parse::<4, u32>(arr).ok().map(|v| v as f64))
+                            .and_then(|arr| tag.endian.decode::<4, u32>(arr).ok().map(|v| v as f64))
                             .unwrap_or(f64::NAN);
 
                         let denominator = c[4..8]
                             .try_into()
                             .ok()
-                            .and_then(|arr| tag.endian.parse::<4, u32>(arr).ok().map(|v| v as f64))
+                            .and_then(|arr| tag.endian.decode::<4, u32>(arr).ok().map(|v| v as f64))
                             .unwrap_or(f64::NAN);
 
                         numerator / denominator
@@ -148,7 +172,7 @@ impl From<&Tag> for TagValue {
             (TagType::SShort, 1) => match tag.data[..]
                 .try_into()
                 .ok()
-                .and_then(|arr| tag.endian.parse::<2, i16>(arr).ok())
+                .and_then(|arr| tag.endian.decode::<2, i16>(arr).ok())
             {
                 Some(v) => TagValue::Number(v as f64),
                 None => TagValue::Undefined,
@@ -159,7 +183,7 @@ impl From<&Tag> for TagValue {
                     .map(|c| {
                         c.try_into()
                             .ok()
-                            .and_then(|arr| tag.endian.parse::<2, i16>(arr).map(|v| v as f64).ok())
+                            .and_then(|arr| tag.endian.decode::<2, i16>(arr).map(|v| v as f64).ok())
                             .unwrap_or(f64::NAN)
                     })
                     .collect::<Vec<_>>(),
@@ -167,7 +191,7 @@ impl From<&Tag> for TagValue {
             (TagType::SLong, 1) => match tag.data[..]
                 .try_into()
                 .ok()
-                .and_then(|arr| tag.endian.parse::<4, i32>(arr).ok())
+                .and_then(|arr| tag.endian.decode::<4, i32>(arr).ok())
             {
                 Some(v) => TagValue::Number(v as f64),
                 None => TagValue::Undefined,
@@ -178,7 +202,7 @@ impl From<&Tag> for TagValue {
                     .map(|c| {
                         c.try_into()
                             .ok()
-                            .and_then(|arr| tag.endian.parse::<4, i32>(arr).map(|v| v as f64).ok())
+                            .and_then(|arr| tag.endian.decode::<4, i32>(arr).map(|v| v as f64).ok())
                             .unwrap_or(f64::NAN)
                     })
                     .collect::<Vec<_>>(),
@@ -187,13 +211,13 @@ impl From<&Tag> for TagValue {
                 let numerator = tag.data[0..4]
                     .try_into()
                     .ok()
-                    .and_then(|arr| tag.endian.parse::<4, i32>(arr).ok().map(|v| v as f64))
+                    .and_then(|arr| tag.endian.decode::<4, i32>(arr).ok().map(|v| v as f64))
                     .unwrap_or(f64::NAN);
 
                 let denominator = tag.data[4..8]
                     .try_into()
                     .ok()
-                    .and_then(|arr| tag.endian.parse::<4, i32>(arr).ok().map(|v| v as f64))
+                    .and_then(|arr| tag.endian.decode::<4, i32>(arr).ok().map(|v| v as f64))
                     .unwrap_or(f64::NAN);
 
                 TagValue::Number(numerator / denominator)
@@ -205,13 +229,13 @@ impl From<&Tag> for TagValue {
                         let numerator = c[0..4]
                             .try_into()
                             .ok()
-                            .and_then(|arr| tag.endian.parse::<4, i32>(arr).ok().map(|v| v as f64))
+                            .and_then(|arr| tag.endian.decode::<4, i32>(arr).ok().map(|v| v as f64))
                             .unwrap_or(f64::NAN);
 
                         let denominator = c[4..8]
                             .try_into()
                             .ok()
-                            .and_then(|arr| tag.endian.parse::<4, i32>(arr).ok().map(|v| v as f64))
+                            .and_then(|arr| tag.endian.decode::<4, i32>(arr).ok().map(|v| v as f64))
                             .unwrap_or(f64::NAN);
 
                         numerator / denominator
@@ -221,7 +245,7 @@ impl From<&Tag> for TagValue {
             (TagType::Float, 1) => match tag.data[..]
                 .try_into()
                 .ok()
-                .and_then(|arr| tag.endian.parse::<4, f32>(arr).ok())
+                .and_then(|arr| tag.endian.decode::<4, f32>(arr).ok())
             {
                 Some(v) => TagValue::Number(v as f64),
                 None => TagValue::Undefined,
@@ -232,7 +256,7 @@ impl From<&Tag> for TagValue {
                     .map(|c| {
                         c.try_into()
                             .ok()
-                            .and_then(|arr| tag.endian.parse::<4, f32>(arr).map(|v| v as f64).ok())
+                            .and_then(|arr| tag.endian.decode::<4, f32>(arr).map(|v| v as f64).ok())
                             .unwrap_or(f64::NAN)
                     })
                     .collect::<Vec<_>>(),
@@ -240,7 +264,7 @@ impl From<&Tag> for TagValue {
             (TagType::Double, 1) => match tag.data[..]
                 .try_into()
                 .ok()
-                .and_then(|arr| tag.endian.parse::<8, f64>(arr).ok())
+                .and_then(|arr| tag.endian.decode::<8, f64>(arr).ok())
             {
                 Some(v) => TagValue::Number(v as f64),
                 None => TagValue::Undefined,
@@ -251,7 +275,7 @@ impl From<&Tag> for TagValue {
                     .map(|c| {
                         c.try_into()
                             .ok()
-                            .and_then(|arr| tag.endian.parse::<8, f64>(arr).ok())
+                            .and_then(|arr| tag.endian.decode::<8, f64>(arr).ok())
                             .unwrap_or(f64::NAN)
                     })
                     .collect::<Vec<_>>(),

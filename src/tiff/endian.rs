@@ -8,7 +8,7 @@ pub enum Endian {
 }
 
 impl Endian {
-    pub fn parse<const N: usize, T: FromBytes<N>>(&self, bytes: [u8; N]) -> Result<T> {
+    pub fn decode<const N: usize, T: FromBytes<N>>(&self, bytes: [u8; N]) -> Result<T> {
         match self {
             Endian::Big => bytes.as_slice().read_be(),
             Endian::Little => bytes.as_slice().read_le(),
@@ -17,6 +17,6 @@ impl Endian {
     pub fn read<const N: usize, T: FromBytes<N>>(&self, stream: &mut impl Read) -> Result<T> {
         let mut buf = [0u8; N];
         stream.read_exact(&mut buf)?;
-        self.parse(buf)
+        self.decode(buf)
     }
 }

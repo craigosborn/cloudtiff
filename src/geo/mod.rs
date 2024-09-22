@@ -5,14 +5,14 @@ use std::fmt::Display;
 use crate::tiff::{Ifd, Tag, TagId};
 
 mod error;
+mod id;
 mod keys;
 mod value;
-mod id;
 
 pub use error::GeoTiffError;
+pub use id::GeoKeyId;
 pub use keys::GeoKeyDirectory;
 pub use value::GeoKeyValue;
-pub use id::GeoKeyId;
 
 #[derive(Clone, Debug)]
 pub struct Geo {
@@ -29,15 +29,13 @@ impl Display for Geo {
         writeln!(
             f,
             "  Directory: {{version: {}, revision: {}.{}}}",
-            self.directory.version,
-            self.directory.revision.0,
-            self.directory.revision.1,
+            self.directory.version, self.directory.revision.0, self.directory.revision.1,
         )?;
         if self.directory.keys.len() > 0 {
-        writeln!(f, "  Keys:")?;
-        for key in self.directory.keys.iter() {
-            writeln!(f, "    {key}")?;
-        }
+            writeln!(f, "  Keys:")?;
+            for key in self.directory.keys.iter() {
+                writeln!(f, "    {key}")?;
+            }
         }
         Ok(())
     }
@@ -61,7 +59,7 @@ impl Geo {
 fn get_required_array_tag<const N: usize>(ifd: &Ifd, id: TagId) -> Result<[f64; N], GeoTiffError> {
     get_required_tag(ifd, id)?
         .value()
-        .to_array()
+        .into_array()
         .ok_or(GeoTiffError::BadTag(id))
 }
 

@@ -5,6 +5,7 @@ use crate::geo::GeoTiffError;
 pub enum CloudTiffError {
     BadTiff(TiffError),
     BadGeoTiff(GeoTiffError),
+    InvalidIndex((usize, usize)),
 }
 
 impl From<TiffError> for CloudTiffError {

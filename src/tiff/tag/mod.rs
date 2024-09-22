@@ -31,14 +31,18 @@ impl Tag {
         TagValue::from(self)
     }
     pub fn raw_values<const N: usize, T: FromBytes<N>>(&self) -> Vec<Option<T>> {
+        // Does not coerce, will be None if requested type is not datatype
         self.data
             .chunks_exact(self.datatype.size_in_bytes())
             .map(|c| {
                 c.try_into()
                     .ok()
-                    .and_then(|arr| self.endian.parse(arr).ok())
+                    .and_then(|arr| self.endian.decode(arr).ok())
             })
             .collect()
+    }
+    pub fn try_raw_values<const N: usize, T: FromBytes<N>>(&self) -> Option<Vec<T>> {
+        self.raw_values().into_iter().collect()
     }
 }
 
@@ -75,10 +79,10 @@ pub enum TagType {
     SRational = 10,
     Float = 11,
     Double = 12,
-    IFD = 13,
+    Ifd = 13,
     Long8 = 16,
     SLong8 = 17,
-    IFD8 = 18,
+    Ifd8 = 18,
 
     #[num_enum(default)]
     Unknown = 0xFFFF,
@@ -99,10 +103,10 @@ impl TagType {
             TagType::SRational => 8,
             TagType::Float => 4,
             TagType::Double => 8,
-            TagType::IFD => 4,
+            TagType::Ifd => 4,
             TagType::Long8 => 8,
             TagType::SLong8 => 8,
-            TagType::IFD8 => 8,
+            TagType::Ifd8 => 8,
 
             TagType::Unknown => 1,
         }
