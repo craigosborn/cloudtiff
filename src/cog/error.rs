@@ -1,7 +1,11 @@
 use super::compression::DecompressError;
-use crate::geo::GeoTiffError;
+use super::projection::ProjectionError;
+use crate::geotags::GeoTiffError;
+use crate::raster::RasterError;
 use crate::tiff::TiffError;
 use std::io;
+
+pub type CloudTiffResult<T> = Result<T, CloudTiffError>;
 
 #[derive(Debug)]
 pub enum CloudTiffError {
@@ -9,8 +13,13 @@ pub enum CloudTiffError {
     BadGeoTiff(GeoTiffError),
     TileLevelOutOfRange((usize, usize)),
     TileIndexOutOfRange((usize, usize)),
+    ImageCoordOutOfRange((f64,f64)),
     ReadError(io::Error),
-    DecompressError(DecompressError),
+    DecompresionError(DecompressError),
+    RasterizationError(RasterError),
+    ProjectionError(ProjectionError),
+    RegionOutOfBounds(((f64,f64,f64,f64),(f64,f64,f64,f64))),
+    NoLevels,
 }
 
 impl From<TiffError> for CloudTiffError {
@@ -28,5 +37,23 @@ impl From<GeoTiffError> for CloudTiffError {
 impl From<io::Error> for CloudTiffError {
     fn from(e: io::Error) -> Self {
         CloudTiffError::ReadError(e)
+    }
+}
+
+impl From<DecompressError> for CloudTiffError {
+    fn from(e: DecompressError) -> Self {
+        CloudTiffError::DecompresionError(e)
+    }
+}
+
+impl From<RasterError> for CloudTiffError {
+    fn from(e: RasterError) -> Self {
+        CloudTiffError::RasterizationError(e)
+    }
+}
+
+impl From<ProjectionError> for CloudTiffError {
+    fn from(e: ProjectionError) -> Self {
+        CloudTiffError::ProjectionError(e)
     }
 }

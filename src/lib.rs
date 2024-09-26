@@ -1,8 +1,10 @@
+#![allow(dead_code)] //TODO
+
 pub mod cog;
-pub mod endian;
-pub mod geotags;
-pub mod integrations;
-pub mod raster;
-pub mod tiff;
+mod endian;
+mod geotags;
+mod integrations;
+mod raster;
+mod tiff;
 
 pub use cog::{CloudTiff, CloudTiffError};

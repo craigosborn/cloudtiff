@@ -1,93 +1,120 @@
-use crate::geo::Geo;
-use crate::tiff::{TagId, Tiff};
+use crate::geotags::GeoTags;
+use crate::raster::Raster;
+use crate::tiff::Tiff;
 use std::fmt::Display;
 use std::io::{Read, Seek};
 
 mod compression;
 mod error;
-mod tile;
+mod level;
+mod projection;
 
-pub use error::CloudTiffError;
-pub use tile::Tile;
+pub use error::{CloudTiffError,CloudTiffResult};
+pub use level::Level;
+pub use projection::Projection;
 
 #[derive(Clone, Debug)]
 pub struct CloudTiff {
-    tiff: Tiff,
-    geo: Geo,
+    levels: Vec<Level>,
+    projection: Projection,
 }
 
 impl CloudTiff {
-    pub fn open<R: Read + Seek>(stream: &mut R) -> Result<Self, CloudTiffError> {
-        // TIFF
+    pub fn open<R: Read + Seek>(stream: &mut R) -> CloudTiffResult<Self> {
+        // TIFF indexing
         let tiff = Tiff::open(stream)?;
 
-        // GeoTIFF
+        // Parse GeoTIFF tags
         let ifd0 = tiff.ifd0()?;
-        let geo = Geo::parse(ifd0)?;
+        let geo_tags = GeoTags::parse(ifd0)?;
 
-        Ok(Self { tiff, geo })
+        // Map IFDs into COG Levels
+        //   Note this skips over any ifds which aren't valid COG levels
+        //   TODO check that all levels have the same shape
+        let mut levels: Vec<Level> = tiff
+            .ifds
+            .iter()
+            .filter_map(|ifd| Level::from_ifd(ifd, tiff.endian).ok())
+            .collect();
+
+        // Validate levels
+        //   COGs should already have levels sorted big to small
+        levels.sort_by(|a, b| (b.megapixels()).total_cmp(&a.megapixels()));
+        if levels.len() == 0 {
+            return Err(CloudTiffError::NoLevels);
+        }
+
+        // Projection georeferences any level
+        let projection = Projection::from_geo_tags(&geo_tags, levels[0].dimensions)?;
+
+        Ok(Self { levels, projection })
+    }
+
+    pub fn get_tile_at_lat_lon<R: Read + Seek>(
+        &self,
+        stream: &mut R,
+        level: usize,
+        lat: f64,
+        lon: f64,
+    ) -> CloudTiffResult<Raster> {
+        let (x, y) = self.projection.transform_from_lat_lon_deg(lat, lon)?;
+        let level = self.get_level(level)?;
+        level.get_tile_at_image_coords(stream, x, y)
+    }
+
+    pub fn bounds_lat_lon_deg(&self) -> CloudTiffResult<(f64, f64, f64, f64)> {
+        Ok(self.projection.bounds_lat_lon_deg()?)
+    }
+
+    pub fn full_dimensions(&self) -> (u32, u32) {
+        self.levels[0].dimensions
     }
 
     pub fn max_level(&self) -> usize {
-        let n_ifds = self.tiff.ifds.len();
-        assert!(n_ifds > 0, "CloudTiff is missing IFDs.");
-        n_ifds - 1
+        let n = self.levels.len();
+        assert!(n > 0, "CloudTIFF has no levels"); // Checked at initialization
+        n - 1
     }
 
-    pub fn get_tile(&self, level: usize, row: usize, col: usize) -> Result<Tile, CloudTiffError> {
-        let ifds = &self.tiff.ifds;
-        let ifd = ifds
+    pub fn get_level(&self, level: usize) -> CloudTiffResult<&Level> {
+        self.levels
             .get(level)
-            .ok_or(CloudTiffError::TileLevelOutOfRange((level, ifds.len())))?;
+            .ok_or(CloudTiffError::TileLevelOutOfRange((
+                level,
+                self.levels.len(),
+            )))
+    }
 
-        // Required tags
-        let compression = ifd.get_tag_value::<u16>(TagId::Compression)?.into();
-        let predictor = ifd
-            .get_tag_value::<u16>(TagId::Predictor)
-            .unwrap_or(1)
-            .into();
-        let bits_per_sample = ifd.get_tag_values(TagId::BitsPerSample)?;
-        let photometric_interpretation = ifd.get_tag_value(TagId::PhotometricInterpretation)?;
-        let tile_width = ifd.get_tag_value(TagId::TileWidth)?;
-        let tile_length = ifd.get_tag_value(TagId::TileLength)?;
-        let tile_offsets = ifd.get_tag_values(TagId::TileOffsets)?;
-        let byte_counts = ifd.get_tag_values(TagId::TileByteCounts)?;
-
-        // Coordinate to index
-        let image_width: u16 = ifd.get_tag_value(TagId::ImageWidth)?;
-        let max_col = (image_width as f32 / tile_width as f32).ceil() as usize;
-        let tile_index = col * max_col + row;
-
-        // Validate tile index
-        let max_valid_tile_index = tile_offsets.len().min(byte_counts.len()) - 1;
-        if tile_index > max_valid_tile_index {
-            return Err(CloudTiffError::TileIndexOutOfRange((
-                tile_index,
-                max_valid_tile_index,
-            )));
-        }
-
-        // Indexed tile
-        let offset = tile_offsets[tile_index];
-        let byte_count = byte_counts[tile_index];
-
-        Ok(Tile {
-            width: tile_width,
-            height: tile_length,
-            predictor,
-            compression,
-            bits_per_sample,
-            photometric_interpretation,
-            offset,
-            byte_count,
-            endian: self.tiff.endian,
-        })
+    pub fn pixel_scales(&self) -> Vec<(f64, f64)> {
+        let scale = self.projection.scale;
+        self.levels
+            .iter()
+            .map(|level| {
+                (
+                    scale.0 / level.dimensions.0 as f64,
+                    scale.1 / level.dimensions.0 as f64,
+                )
+            })
+            .collect()
     }
 }
 
 impl Display for CloudTiff {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.tiff)?;
-        write!(f, "{}", self.geo)
+        write!(f, "CloudTiff({} Levels)", self.levels.len())?;
+        for level in self.levels.iter() {
+            write!(f, "\n  {level}")?;
+        }
+        Ok(())
     }
+}
+
+pub fn disect<R: Read + Seek>(stream: &mut R) -> Result<(), CloudTiffError> {
+    let tiff = Tiff::open(stream)?;
+    println!("{tiff}");
+
+    let geo = GeoTags::parse(tiff.ifd0()?)?;
+    println!("{geo}");
+
+    Ok(())
 }

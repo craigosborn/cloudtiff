@@ -2,16 +2,16 @@
 // https://exiftool.org/TagNames/EXIF.html#Compression
 // https://github.com/image-rs/image-tiff/blob/master/src/decoder/mod.rs
 
+use miniz_oxide::inflate::{self,TINFLStatus};
 use num_enum::{FromPrimitive, IntoPrimitive};
-
-use miniz_oxide::inflate;
 use salzweg::decoder::{DecodingError, TiffStyleDecoder};
 
 #[derive(Debug)]
 pub enum DecompressError {
     LzwError(DecodingError),
-    InflateError(inflate::DecompressError),
-    NotSupported(Compression),
+    InflateError(TINFLStatus),
+    CompressionNotSupported(Compression),
+    PredictorNotSupported(Predictor),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, FromPrimitive)]
@@ -80,9 +80,9 @@ impl Compression {
                 TiffStyleDecoder::decode_to_vec(bytes).map_err(|e| DecompressError::LzwError(e))
             }
             Self::DeflateAdobe => {
-                inflate::decompress_to_vec_zlib(bytes).map_err(|e| DecompressError::InflateError(e))
+                inflate::decompress_to_vec_zlib(bytes).map_err(|e| DecompressError::InflateError(e.status))
             }
-            other => Err(DecompressError::NotSupported(*other)),
+            other => Err(DecompressError::CompressionNotSupported(*other)),
         }
     }
 }
@@ -90,10 +90,39 @@ impl Compression {
 #[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, FromPrimitive)]
 #[repr(u16)]
 pub enum Predictor {
-    None = 1,
+    No = 1,
     Horizontal = 2,
     FloatingPoint = 3,
 
     #[num_enum(default)]
     Unknown = 0x0000,
+}
+
+impl Predictor {
+    pub fn predict(
+        &self,
+        buffer: &mut [u8],
+        width: usize,
+        bit_depth: usize,
+        samples_per_pixel: usize,
+    ) -> Result<(), DecompressError> {
+        match self {
+            Self::No => {}
+            Self::Horizontal => {
+                assert!(
+                    bit_depth <= 8,
+                    "Bit depth {bit_depth} not supported for Horizontal Predictor"
+                );
+                let row_bytes = width * samples_per_pixel * bit_depth / 8;
+                for i in 0..buffer.len() {
+                    if i % row_bytes < samples_per_pixel {
+                        continue;
+                    }
+                    buffer[i] = buffer[i].wrapping_add(buffer[i - samples_per_pixel]);
+                }
+            }
+            other => return Err(DecompressError::PredictorNotSupported(*other)),
+        }
+        Ok(())
+    }
 }

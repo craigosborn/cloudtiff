@@ -18,3 +18,4 @@ num-traits = "0.2.19"
 num_enum = "0.7.3"
 salzweg = "0.1.4"
 image = { version = "0.25.2", optional = true }
+proj4rs = { version = "0.1.4", features = ["crs-definitions"] }
