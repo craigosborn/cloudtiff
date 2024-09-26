@@ -9,26 +9,24 @@ const OUTPUT_FILE: &str = "data/tile.tif";
 
 fn main() {
     // File access
-    println!("Opening {SAMPLE_COG}");
+    println!("Opening `{SAMPLE_COG}`");
     let file = File::open(SAMPLE_COG).unwrap();
     let reader = &mut BufReader::new(file);
 
-    // CloudTiff parsing
-    let t0 = Instant::now();
+    // CloudTiff indexing
+    let t_cog = Instant::now();
     let cog = CloudTiff::open(reader).unwrap();
-    println!("Decoded in {:.6}s", t0.elapsed().as_secs_f64());
+    println!("Indexed COG in {}us", t_cog.elapsed().as_micros());
     println!("{cog}");
 
-    // Tile indexing
-    let tile = cog.get_tile(cog.max_level(), 0, 0).unwrap();
+    // Tile extraction
+    let t_tile = Instant::now();
+    let tile = cog.get_tile_at_lat_lon(reader, 0, 54.54890822105085, -127.78036580546008).unwrap();
+    println!("Got tile in {}us", t_tile.elapsed().as_micros());
     println!("{}", tile);
 
-    // Raster extraction
-    let raster = tile.extract(reader).unwrap();
-    println!("{}", raster);
-
     // Image output
-    let img: DynamicImage = raster.try_into().unwrap();
+    let img: DynamicImage = tile.try_into().unwrap();
     img.save(OUTPUT_FILE).unwrap();
     println!("Image saved to {OUTPUT_FILE}");
 }
