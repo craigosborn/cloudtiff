@@ -6,7 +6,8 @@ authors = ["Craig Osborn <craig@craigosborn.dev>"]
 description = "A Cloud Optimized GeoTIFF library for Rust"
 
 [features]
-default = ["image"]
+default = ["image", "async"]
+async = []
 
 [profile.dev]
 opt-level = 3
@@ -19,3 +20,6 @@ num_enum = "0.7.3"
 salzweg = "0.1.4"
 image = { version = "0.25.2", optional = true }
 proj4rs = { version = "0.1.4", features = ["crs-definitions"] }
+
+[dev-dependencies]
+actix-web = "4.9.0"

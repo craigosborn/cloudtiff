@@ -8,16 +8,16 @@ A Cloud Optimized GeoTIFF library for Rust
 * Fast
 * Robust reader
 * Correct writer
-* Rust only
+* Pure Rust
 
 ### Features
 
 - [x] TIFF decoding without extracting 
 - [x] Tile extraction and decompression
-- [ ] Georeferencing from tags
-- [ ] WMS rendering
-- [ ] WMTS rendering
+- [x] Georeferencing from tags (proj4rs)
+- [x] Tile rerendering (WMTS)
 - [ ] Encoding
+- [ ] Integration with S3 & HTTP
 
 ### Limitations
 
@@ -33,15 +33,14 @@ use image::DynamicImage;
 use std::fs::File;
 use std::io::BufReader;
 
-fn save_preview(file: File) {
+fn save_tile(file: File) {
     let reader = &mut BufReader::new(file);
     let cog = CloudTiff::open(reader).unwrap();
 
-    let tile = cog.get_tile(cog.max_level(), 0, 0).unwrap();
-    let raster = tile.extract(reader).unwrap();
+    let tile = cog.get_tile_at_lat_lon(reader, cog.max_level(), 54.5, -127.8).unwrap();
 
-    let img: DynamicImage = raster.try_into().unwrap();
-    img.save("preview.jpg").unwrap();
+    let img: DynamicImage = tile.try_into().unwrap();
+    img.save("tile.jpg").unwrap();
 }
 ```
 
@@ -57,7 +56,7 @@ aws s3 cp --no-sign-request s3://sentinel-cogs/sentinel-s2-l2a-cogs/9/U/WA/2024/
 
 Run the example:
 ```
-cargo run --example filesystem
+cargo run --example wmts
 ```
 
 ### Design Principle
@@ -70,7 +69,7 @@ cargo run --example filesystem
 
 ### References
 [TIFF 6.0 spec](https://download.osgeo.org/geotiff/spec/tiff6.pdf)  
-[BigTIFF spec](https://web.archive.org/web/20240622111852/https://www.awaresystems.be/imaging/tiff/bigtiff.html)
+[BigTIFF spec](https://web.archive.org/web/20240622111852/https://www.awaresystems.be/imaging/tiff/bigtiff.html)  
 [OGC GeoTIFF standard](https://docs.ogc.org/is/19-008r4/19-008r4.html)  
 [GeoTIFF paper](https://www.geospatialworld.net/wp-content/uploads/images/pdf/117.pdf)  
 [Cloud Optimized GeoTIFF spec](https://github.com/cogeotiff/cog-spec/blob/master/spec.md)  
@@ -86,7 +85,7 @@ cargo run --example filesystem
 
 ### Related Libraries
 [cog3pio](https://github.com/weiji14/cog3pio) (Read only)  
-[tiff](https://crates.io/crates/tiff) (Decoding not optimal for COG)
+[tiff](https://crates.io/crates/tiff) (Decoding not optimal for COG)  
 [geo](https://crates.io/crates/geo) (Coordinate transformation and projection)  
 [geotiff](https://crates.io/crates/geotiff) (Decoding not optimal for COG)  
 [geotiff-rs](https://github.com/fizyk20/geotiff-rs)  
@@ -95,5 +94,5 @@ cargo run --example filesystem
 ### Tools
 [QGIS](https://cogeo.org/qgis-tutorial.html)  
 [GDAL](https://gdal.org/en/latest/drivers/raster/cog.html)  
-[rio-cogeo](https://github.com/cogeotiff/rio-cogeo)
-[rio-tiler](https://github.com/cogeotiff/rio-tiler)
+[rio-cogeo](https://github.com/cogeotiff/rio-cogeo)  
+[rio-tiler](https://github.com/cogeotiff/rio-tiler)  

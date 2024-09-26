@@ -3,6 +3,9 @@ use crate::raster::Raster;
 use std::collections::HashMap;
 use std::io::{Read, Seek};
 
+#[cfg(feature = "async")]
+mod concurrent;
+
 type PixelMap = HashMap<usize, Vec<((f64, f64), (u32, u32))>>;
 
 impl CloudTiff {
