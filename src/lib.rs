@@ -1,6 +1,6 @@
 pub mod cog;
 pub mod endian;
-pub mod geo;
+pub mod geotags;
 pub mod raster;
 pub mod tiff;
 

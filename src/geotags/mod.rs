@@ -16,33 +16,33 @@ use num_traits::NumCast;
 pub use value::GeoKeyValue;
 
 #[derive(Clone, Debug)]
-pub struct Geo {
-    tiepoint: [f64; 6],
-    pixel_scale: [f64; 3],
-    directory: GeoKeyDirectory,
+pub struct GeoTags {
+    pub tiepoint: [f64; 6],
+    pub pixel_scale: [f64; 3],
+    pub directory: GeoKeyDirectory,
 }
 
-impl Display for Geo {
+impl Display for GeoTags {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "GeoTiff:")?;
+        writeln!(f, "GeoTIFF Tags:")?;
         writeln!(f, "  Tiepoint: {:?}", self.tiepoint)?;
         writeln!(f, "  Pixel Scale: {:?}", self.pixel_scale)?;
-        writeln!(
+        write!(
             f,
             "  Directory: {{version: {}, revision: {}.{}}}",
             self.directory.version, self.directory.revision.0, self.directory.revision.1,
         )?;
         if self.directory.keys.len() > 0 {
-            writeln!(f, "  Keys:")?;
+            write!(f, "\n  Keys:")?;
             for key in self.directory.keys.iter() {
-                writeln!(f, "    {key}")?;
+                write!(f, "\n    {key}")?;
             }
         }
         Ok(())
     }
 }
 
-impl Geo {
+impl GeoTags {
     pub fn parse(ifd: &Ifd) -> Result<Self, GeoTiffError> {
         let tiepoint = get_tag_as_array(ifd, TagId::ModelTiepoint)?;
         let pixel_scale = get_tag_as_array(ifd, TagId::ModelPixelScale)?;
