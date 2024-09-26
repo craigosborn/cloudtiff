@@ -89,15 +89,15 @@ impl Tiff {
 
 impl Display for Tiff {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
+        write!(
             f,
             "Tiff: {{{:?} Endian, {:?} Variant}}",
             self.endian, self.variant
         )?;
         for (i, ifd) in self.ifds.iter().enumerate() {
-            writeln!(f, "  IFD {i}:")?;
+            write!(f, "\n  IFD {i}:")?;
             for tag in ifd.0.iter() {
-                writeln!(f, "    {}", tag)?;
+                write!(f, "\n    {}", tag)?;
             }
         }
         Ok(())

@@ -121,7 +121,7 @@ impl Tag {
 
 impl Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut value_string = format!("{}", self.as_string_lossy());
+        let mut value_string = format!("{}", self.as_string_lossy().replace("\n", "\\n"));
         if value_string.len() > 100 {
             value_string = format!("{}...", &value_string[..98])
         }
