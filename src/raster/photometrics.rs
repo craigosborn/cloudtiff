@@ -24,3 +24,25 @@ pub enum PhotometricInterpretation {
     #[num_enum(default)]
     Unknown = 0xFFFF,
 }
+
+#[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, FromPrimitive)]
+#[repr(u16)]
+pub enum SampleFormat {
+    Uint = 1,
+    Int = 2,
+    IEEEFP = 3,
+    Undefined = 4,
+
+    #[num_enum(default)]
+    Unknown = 0xFFFF,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, FromPrimitive)]
+#[repr(u16)]
+pub enum PlanarConfiguration {
+    Chunky = 1,
+    Planar = 2,
+
+    #[num_enum(default)]
+    Unknown = 0xFFFF,
+}
