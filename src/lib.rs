@@ -1,5 +1,3 @@
-#![allow(dead_code)] //TODO
-
 pub mod cog;
 mod endian;
 mod geotags;

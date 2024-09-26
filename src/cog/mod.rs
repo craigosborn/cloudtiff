@@ -8,6 +8,7 @@ mod compression;
 mod error;
 mod level;
 mod projection;
+mod render;
 
 pub use error::{CloudTiffError,CloudTiffResult};
 pub use level::Level;

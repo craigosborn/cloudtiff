@@ -118,10 +118,10 @@ impl Projection {
     pub fn bounds_lat_lon_deg(&self) -> Result<(f64, f64, f64, f64), ProjectionError> {
         let (west, north, east, south) = self.bounds(4326)?;
         Ok((
-            west.to_degrees(),
             north.to_degrees(),
-            east.to_degrees(),
+            west.to_degrees(),
             south.to_degrees(),
+            east.to_degrees(),
         ))
     }
 
