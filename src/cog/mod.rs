@@ -1,5 +1,4 @@
 use crate::geotags::GeoTags;
-use crate::raster::Raster;
 use crate::tiff::Tiff;
 use std::fmt::Display;
 use std::io::{Read, Seek};
@@ -9,6 +8,9 @@ mod error;
 mod level;
 mod projection;
 mod render;
+
+#[cfg(feature = "async")]
+mod asynchronous;
 
 pub use error::{CloudTiffError,CloudTiffResult};
 pub use level::Level;
@@ -51,24 +53,21 @@ impl CloudTiff {
         Ok(Self { levels, projection })
     }
 
-    pub fn get_tile_at_lat_lon<R: Read + Seek>(
-        &self,
-        stream: &mut R,
-        level: usize,
-        lat: f64,
-        lon: f64,
-    ) -> CloudTiffResult<Raster> {
-        let (x, y) = self.projection.transform_from_lat_lon_deg(lat, lon)?;
-        let level = self.get_level(level)?;
-        level.get_tile_at_image_coords(stream, x, y)
-    }
-
     pub fn bounds_lat_lon_deg(&self) -> CloudTiffResult<(f64, f64, f64, f64)> {
         Ok(self.projection.bounds_lat_lon_deg()?)
     }
 
     pub fn full_dimensions(&self) -> (u32, u32) {
         self.levels[0].dimensions
+    }
+
+    pub fn full_megapixels(&self) -> f64 {
+        self.levels[0].megapixels()
+    }
+
+    pub fn aspect_ratio(&self) -> f64 {
+        let (w,h) = self.full_dimensions();
+        w as f64 / h as f64
     }
 
     pub fn max_level(&self) -> usize {
@@ -82,7 +81,7 @@ impl CloudTiff {
             .get(level)
             .ok_or(CloudTiffError::TileLevelOutOfRange((
                 level,
-                self.levels.len(),
+                self.levels.len()-1,
             )))
     }
 
@@ -97,6 +96,20 @@ impl CloudTiff {
                 )
             })
             .collect()
+    }
+
+    pub fn level_at_pixel_scale(&self, min_pixel_scale: f64) -> CloudTiffResult<&Level> {
+        let level_scales = self.pixel_scales();
+        let level_index = level_scales
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(_, (level_scale_x, level_scale_y))| {
+                level_scale_x.max(*level_scale_y) < min_pixel_scale
+            })
+            .map(|(i, _)| i)
+            .unwrap_or(0);
+        self.get_level(level_index)
     }
 }
 

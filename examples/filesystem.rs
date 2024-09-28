@@ -8,6 +8,8 @@ const SAMPLE_COG: &str = "data/sample.tif";
 const OUTPUT_FILE: &str = "data/tile.tif";
 
 fn main() {
+    println!("Example: cloudtiff + filesystem");
+    
     // File access
     println!("Opening `{SAMPLE_COG}`");
     let file = File::open(SAMPLE_COG).unwrap();
@@ -21,7 +23,7 @@ fn main() {
 
     // Tile extraction
     let t_tile = Instant::now();
-    let tile = cog.get_tile_at_lat_lon(reader, 0, 54.54890822105085, -127.78036580546008).unwrap();
+    let tile = cog.get_tile_at_lat_lon(reader, 0, 54.55, -127.78).unwrap();
     println!("Got tile in {}us", t_tile.elapsed().as_micros());
     println!("{}", tile);
 

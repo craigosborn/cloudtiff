@@ -4,28 +4,35 @@ use image::DynamicImage;
 use std::f64::consts::{PI, TAU};
 use std::fs::File;
 use std::io::BufReader;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tokio::fs::File as TokioFile;
+use tokio::io::BufReader as TokioBufReader;
 
 const SAMPLE_COG: &str = "data/sample.tif";
 const TILE_SIZE: u32 = 256;
 const HOST_URL: &str = "localhost:8080";
 
 struct AppState {
-    pub reader: Arc<Mutex<BufReader<File>>>,
+    pub reader: Arc<Mutex<TokioBufReader<TokioFile>>>,
     pub cog: CloudTiff,
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    println!("Example: cloudtiff + WMTS");
+
     // cog
     let file = File::open(SAMPLE_COG).unwrap();
     let mut reader = BufReader::new(file);
     let cog = CloudTiff::open(&mut reader).unwrap();
 
     // state
+    let tokio_file = TokioFile::open(SAMPLE_COG).await.unwrap();
+    let tokio_reader = TokioBufReader::new(tokio_file);
     let state = AppState {
         cog,
-        reader: Arc::new(Mutex::new(reader)),
+        reader: Arc::new(Mutex::new(tokio_reader)),
     };
     let app_state = web::Data::new(state);
 

@@ -11,6 +11,8 @@ const OUTPUT_FILE: &str = "data/wmts.tif";
 const TILE_SIZE: u32 = 512;
 
 fn main() {
+    println!("Example: WMTS Basic");
+
     // COG
     println!("Opening `{SAMPLE_COG}`");
     let file = File::open(SAMPLE_COG).unwrap();

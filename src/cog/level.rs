@@ -91,6 +91,30 @@ impl Level {
         self.extract_tile_bytes(&mut bytes)
     }
 
+    pub fn tile_indices_within_image_region(
+        &self,
+        region: (f64, f64, f64, f64), // (left, top, right, bottom)
+    ) -> Vec<usize> {
+        let (left, top) = self.tile_coord_from_image_coord(region.0, region.1);
+        let (right, bottom) = self.tile_coord_from_image_coord(region.2, region.3);
+
+        let col_count = self.col_count();
+        let row_count = self.row_count();
+
+        let col_min = left.floor().max(0.0) as usize;
+        let col_max = right.ceil().min(col_count as f64) as usize;
+        let row_min = top.floor().max(0.0) as usize;
+        let row_max = bottom.ceil().min(row_count as f64) as usize;
+
+        let mut indices = vec![];
+        for row in row_min..row_max {
+            for col in col_min..col_max {
+                indices.push(row * col_count + col);
+            }
+        }
+        indices
+    }
+
     pub fn index_from_image_coords(
         &self,
         x: f64,
@@ -102,16 +126,20 @@ impl Level {
         }
 
         // Tile coord
-        let max_col = (self.width() as f64 / self.tile_width as f64).ceil() as usize;
-        let col: f64 = x * self.width() as f64 / self.tile_width as f64;
-        let row: f64 = y * self.height() as f64 / self.tile_height as f64;
+        let (col, row) = self.tile_coord_from_image_coord(x, y);
 
         // Tile index and fraction
-        let tile_index = row.floor() as usize * max_col + col.floor() as usize;
+        let tile_index = row.floor() as usize * self.col_count() + col.floor() as usize;
         let tile_x = (col - col.floor()) * self.tile_width as f64;
         let tile_y = (row - row.floor()) * self.tile_height as f64;
 
         Ok((tile_index, tile_x, tile_y))
+    }
+
+    pub fn tile_coord_from_image_coord(&self, x: f64, y: f64) -> (f64, f64) {
+        let col: f64 = x * self.width() as f64 / self.tile_width as f64;
+        let row: f64 = y * self.height() as f64 / self.tile_height as f64;
+        (col, row)
     }
 
     fn get_tile_bytes<R: Read + Seek>(
@@ -163,6 +191,25 @@ impl Level {
             self.interpretation,
             self.endian, // TODO shouldn't need this
         )?)
+    }
+
+    pub fn tile_bounds(&self, index: &usize) -> (f64, f64, f64, f64) {
+        let col_count = self.col_count();
+        let row = (index / col_count) as f64;
+        let col = (index % col_count) as f64;
+        let left = (col * self.tile_width as f64) / self.dimensions.0 as f64;
+        let top = (row * self.tile_height as f64) / self.dimensions.1 as f64;
+        let right = ((col + 1.0) * self.tile_width as f64) / self.dimensions.0 as f64;
+        let bottom = ((row + 1.0) * self.tile_height as f64) / self.dimensions.1 as f64;
+        (left, top, right, bottom)
+    }
+
+    pub fn col_count(&self) -> usize {
+        (self.width() as f64 / self.tile_width as f64).ceil() as usize
+    }
+
+    pub fn row_count(&self) -> usize {
+        (self.height() as f64 / self.tile_height as f64).ceil() as usize
     }
 }
 

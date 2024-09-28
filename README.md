@@ -33,14 +33,14 @@ use image::DynamicImage;
 use std::fs::File;
 use std::io::BufReader;
 
-fn save_tile(file: File) {
+fn save_preview(file: File) {
     let reader = &mut BufReader::new(file);
     let cog = CloudTiff::open(reader).unwrap();
 
-    let tile = cog.get_tile_at_lat_lon(reader, cog.max_level(), 54.5, -127.8).unwrap();
+    let preview = cog.render_image_with_mp_limit(reader, 1.0).unwrap();
 
-    let img: DynamicImage = tile.try_into().unwrap();
-    img.save("tile.jpg").unwrap();
+    let img: DynamicImage = preview.try_into().unwrap();
+    img.save("preview.jpg").unwrap();
 }
 ```
 

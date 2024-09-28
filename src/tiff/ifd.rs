@@ -67,7 +67,7 @@ impl Ifd {
     }
 
     pub fn get_tag(&self, id: TagId) -> Result<&Tag, TiffError> {
-        let code = id.into();
+        let code: u16 = id.into();
         let Self(tags) = &self;
         tags.iter()
             .find(|tag| tag.code == code)
