@@ -7,7 +7,7 @@ description = "A Cloud Optimized GeoTIFF library for Rust"
 
 [features]
 default = ["image", "async"]
-async = []
+async = ["tokio", "futures"]
 
 [profile.dev]
 opt-level = 3
@@ -20,6 +20,11 @@ num_enum = "0.7.3"
 salzweg = "0.1.4"
 image = { version = "0.25.2", optional = true }
 proj4rs = { version = "0.1.4", features = ["crs-definitions"] }
+tokio = { version = "1.40.0", features = ["fs", "rt-multi-thread", "macros"], optional = true }
+futures = { version = "0.3.30", optional = true }
 
 [dev-dependencies]
 actix-web = "4.9.0"
+async_http_range_reader = "0.8.0"
+reqwest = "0.12.7"
+http = "1.1.0"
