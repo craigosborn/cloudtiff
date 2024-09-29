@@ -4,7 +4,6 @@ use crate::endian::Endian;
 use crate::raster::{PhotometricInterpretation, Raster};
 use crate::tiff::{Ifd, TagId, TiffError};
 use std::fmt::Display;
-use std::io::{Read, Seek, SeekFrom};
 
 #[derive(Clone, Debug)]
 pub struct Level {
@@ -72,25 +71,6 @@ impl Level {
         self.dimensions.1
     }
 
-    pub fn get_tile_at_image_coords<R: Read + Seek>(
-        &self,
-        stream: &mut R,
-        x: f64,
-        y: f64,
-    ) -> Result<Raster, CloudTiffError> {
-        let (index, _tile_x, _tile_y) = self.index_from_image_coords(x, y)?;
-        self.get_tile_by_index(stream, index)
-    }
-
-    pub fn get_tile_by_index<R: Read + Seek>(
-        &self,
-        stream: &mut R,
-        index: usize,
-    ) -> Result<Raster, CloudTiffError> {
-        let mut bytes = self.get_tile_bytes(stream, index)?;
-        self.extract_tile_bytes(&mut bytes)
-    }
-
     pub fn tile_indices_within_image_region(
         &self,
         region: (f64, f64, f64, f64), // (left, top, right, bottom)
@@ -142,11 +122,10 @@ impl Level {
         (col, row)
     }
 
-    fn get_tile_bytes<R: Read + Seek>(
+    fn tile_byte_range(
         &self,
-        stream: &mut R,
         index: usize,
-    ) -> Result<Vec<u8>, CloudTiffError> {
+    ) -> Result<(u64,u64), CloudTiffError> {
         // Validate index
         let max_valid_index = self.offsets.len().min(self.byte_counts.len()) - 1;
         if index > max_valid_index {
@@ -160,12 +139,7 @@ impl Level {
         let offset = self.offsets[index];
         let byte_count = self.byte_counts[index];
 
-        // Read bytes
-        let mut bytes = vec![0; byte_count];
-        stream.seek(SeekFrom::Start(offset))?;
-        stream.read_exact(&mut bytes)?;
-
-        Ok(bytes)
+        Ok((offset, offset + byte_count as u64))
     }
 
     pub fn extract_tile_bytes(&self, bytes: &[u8]) -> Result<Raster, CloudTiffError> {

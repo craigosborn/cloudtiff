@@ -1,7 +1,8 @@
+#![allow(dead_code)] // TODO
+
 pub mod cog;
 mod endian;
 mod geotags;
-mod integrations;
 mod raster;
 mod tiff;
 mod io;

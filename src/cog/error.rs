@@ -3,6 +3,7 @@ use super::projection::ProjectionError;
 use crate::geotags::GeoTiffError;
 use crate::raster::RasterError;
 use crate::tiff::TiffError;
+use std::fmt::Debug;
 use std::io;
 
 pub type CloudTiffResult<T> = Result<T, CloudTiffError>;
@@ -13,13 +14,15 @@ pub enum CloudTiffError {
     BadGeoTiff(GeoTiffError),
     TileLevelOutOfRange((usize, usize)),
     TileIndexOutOfRange((usize, usize)),
-    ImageCoordOutOfRange((f64,f64)),
+    ImageCoordOutOfRange((f64, f64)),
     ReadError(io::Error),
     DecompresionError(DecompressError),
     RasterizationError(RasterError),
     ProjectionError(ProjectionError),
-    RegionOutOfBounds(((f64,f64,f64,f64),(f64,f64,f64,f64))),
+    RegionOutOfBounds(((f64, f64, f64, f64), (f64, f64, f64, f64))),
+    ReadRangeError(String),
     NoLevels,
+    JoinError,
 }
 
 impl From<TiffError> for CloudTiffError {

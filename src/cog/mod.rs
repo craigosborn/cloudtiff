@@ -7,14 +7,13 @@ mod compression;
 mod error;
 mod level;
 mod projection;
-mod render;
+pub mod render;
 
-#[cfg(feature = "async")]
-mod asynchronous;
 
 pub use error::{CloudTiffError,CloudTiffResult};
 pub use level::Level;
 pub use projection::Projection;
+pub use render::Renderer;
 
 #[derive(Clone, Debug)]
 pub struct CloudTiff {

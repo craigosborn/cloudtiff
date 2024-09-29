@@ -3,6 +3,13 @@ use proj4rs::errors::Error as Proj4Error;
 use proj4rs::proj::Proj;
 use proj4rs::transform::transform;
 
+pub mod unit;
+
+pub use unit::UnitRegion;
+
+// COG Projection
+//   TODO verify 3D support
+
 #[derive(Debug)]
 pub enum ProjectionError {
     MissingGeoKey(GeoKeyId),
@@ -16,14 +23,12 @@ impl From<Proj4Error> for ProjectionError {
         ProjectionError::Proj4Error(e)
     }
 }
-
 #[derive(Clone, Debug)]
 pub struct Projection {
     pub proj: Proj,
     pub origin: (f64, f64, f64),
     pub scale: (f64, f64, f64),
 }
-// TODO verify 3D support
 
 impl Projection {
     pub fn from_geo_tags(geo: &GeoTags, dimensions: (u32, u32)) -> Result<Self, ProjectionError> {
@@ -31,7 +36,12 @@ impl Projection {
             .directory
             .keys
             .iter()
-            .find(|key| key.id() == Some(GeoKeyId::ProjectedCSTypeGeoKey))
+            .find(|key| {
+                matches!(
+                    key.id(),
+                    Some(GeoKeyId::ProjectedCSTypeGeoKey | GeoKeyId::GeographicTypeGeoKey)
+                )
+            })
             .and_then(|key| key.value.as_number())
         else {
             return Err(ProjectionError::MissingGeoKey(
@@ -39,13 +49,36 @@ impl Projection {
             ));
         };
         let proj = Proj::from_epsg_code(epsg)?;
+        // let units = proj.units();
+        // println!("units: {units:?}");
 
-        let origin = (geo.tiepoint[3], geo.tiepoint[4], geo.tiepoint[5]);
+        // TODO there has to be a better way...
+        let unit_gain = match (
+            epsg,
+            geo.directory
+                .keys
+                .iter()
+                .find(|key| matches!(key.id(), Some(GeoKeyId::GeogAngularUnitsGeoKey)))
+                .and_then(|key| key.value.as_number()),
+        ) {
+            (4326, Some(9102)) => 1_f64.to_radians(),
+            _ => 1.0,
+        };
+
+        let origin = (
+            geo.tiepoint[3] * unit_gain,
+            geo.tiepoint[4] * unit_gain,
+            geo.tiepoint[5] * unit_gain,
+        );
         if !origin.0.is_finite() || !origin.1.is_finite() || !origin.2.is_finite() {
             return Err(ProjectionError::InvalidOrigin(origin));
         }
 
-        let pixel_scale = (geo.pixel_scale[0], geo.pixel_scale[1], geo.pixel_scale[2]);
+        let pixel_scale = (
+            geo.pixel_scale[0] * unit_gain,
+            geo.pixel_scale[1] * unit_gain,
+            geo.pixel_scale[2] * unit_gain,
+        );
         if !pixel_scale.0.is_normal() || !pixel_scale.1.is_normal() {
             return Err(ProjectionError::InvalidScale(pixel_scale));
         }
