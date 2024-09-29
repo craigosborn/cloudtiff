@@ -1,23 +1,26 @@
 use futures::future::BoxFuture;
 use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom};
+use std::fmt::Debug;
 
 pub mod fs;
 pub mod http;
 pub mod s3;
 
-pub trait ReadRange: Send + Sync + 'static {
+pub trait ReadRange: Debug + Send + Sync + 'static {
     fn read_range(&self, start: u64, end: u64) -> Result<Vec<u8>>;
 }
 
-pub trait ReadRangeAsync: Send + Sync + 'static {
+pub trait ReadRangeAsync: Debug + Send + Sync + 'static {
     fn read_range_async(&self, start: u64, end: u64) -> BoxFuture<'static, Result<Vec<u8>>>;
 }
 
+#[derive(Debug)]
 pub struct RangeReader {
     reader: Flavor,
     position: u64,
 }
 
+#[derive(Debug)]
 pub enum Flavor {
     Sync(Box<dyn ReadRange>),
     Async(Box<dyn ReadRangeAsync>),

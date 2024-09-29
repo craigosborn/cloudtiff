@@ -2,16 +2,25 @@
 // https://exiftool.org/TagNames/EXIF.html#Compression
 // https://github.com/image-rs/image-tiff/blob/master/src/decoder/mod.rs
 
-use miniz_oxide::inflate::{self,TINFLStatus};
+use std::io::{self, Read};
+// use miniz_oxide::inflate::{self,TINFLStatus};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use salzweg::decoder::{DecodingError, TiffStyleDecoder};
+use flate2;
 
 #[derive(Debug)]
 pub enum DecompressError {
     LzwError(DecodingError),
-    InflateError(TINFLStatus),
+    // InflateError(TINFLStatus),
     CompressionNotSupported(Compression),
     PredictorNotSupported(Predictor),
+    IoError(io::Error),
+}
+
+impl From<io::Error> for DecompressError {
+    fn from(e: io::Error) -> Self {
+        DecompressError::IoError(e)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, FromPrimitive)]
@@ -80,7 +89,10 @@ impl Compression {
                 TiffStyleDecoder::decode_to_vec(bytes).map_err(|e| DecompressError::LzwError(e))
             }
             Self::DeflateAdobe => {
-                inflate::decompress_to_vec_zlib(bytes).map_err(|e| DecompressError::InflateError(e.status))
+                let mut buf = vec![];
+                flate2::read::ZlibDecoder::new(bytes).read_to_end(&mut buf)?;
+                Ok(buf)
+                // inflate::decompress_to_vec_zlib(bytes).map_err(|e| DecompressError::InflateError(e.status))
             }
             other => Err(DecompressError::CompressionNotSupported(*other)),
         }
