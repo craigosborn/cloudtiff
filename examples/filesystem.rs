@@ -1,4 +1,4 @@
-use cloudtiff::CloudTiff;
+use cloudtiff::{CloudTiff, PathReader};
 use image::DynamicImage;
 use std::fs::File;
 use std::io::BufReader;
@@ -9,7 +9,7 @@ const OUTPUT_FILE: &str = "data/tile.tif";
 
 fn main() {
     println!("Example: cloudtiff + filesystem");
-    
+
     // File access
     println!("Opening `{SAMPLE_COG}`");
     let file = File::open(SAMPLE_COG).unwrap();
@@ -23,12 +23,17 @@ fn main() {
 
     // Tile extraction
     let t_tile = Instant::now();
-    let tile = cog.get_tile_at_lat_lon(reader, 0, 54.55, -127.78).unwrap();
-    println!("Got tile in {}us", t_tile.elapsed().as_micros());
-    println!("{}", tile);
+    let preview = cog
+        .renderer()
+        .with_mp_limit(10.0)
+        .with_reader(PathReader::new(SAMPLE_COG))
+        .render()
+        .unwrap();
+    println!("Got preview in {:.3}ms", t_tile.elapsed().as_secs_f32() * 1e3);
+    println!("{}", preview);
 
     // Image output
-    let img: DynamicImage = tile.try_into().unwrap();
+    let img: DynamicImage = preview.try_into().unwrap();
     img.save(OUTPUT_FILE).unwrap();
     println!("Image saved to {OUTPUT_FILE}");
 }

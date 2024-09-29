@@ -122,7 +122,7 @@ impl Level {
         (col, row)
     }
 
-    fn tile_byte_range(
+    pub fn tile_byte_range(
         &self,
         index: usize,
     ) -> Result<(u64,u64), CloudTiffError> {

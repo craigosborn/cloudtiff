@@ -13,7 +13,6 @@ pub mod render;
 pub use error::{CloudTiffError,CloudTiffResult};
 pub use level::Level;
 pub use projection::Projection;
-pub use render::Renderer;
 
 #[derive(Clone, Debug)]
 pub struct CloudTiff {

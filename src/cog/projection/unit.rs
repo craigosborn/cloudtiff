@@ -13,6 +13,13 @@ pub struct UnitRegion {
     pub y_max: UnitFloat,
 }
 
+impl UnitRegion {
+
+    pub fn as_f64(self) -> (f64,f64,f64,f64) {
+        (self.x_min.as_f64(), self.y_min.as_f64(), self.x_max.as_f64(), self.y_max.as_f64())
+    }
+}
+
 impl Default for UnitRegion {
     fn default() -> Self {
         Self {
