@@ -6,8 +6,11 @@ authors = ["Craig Osborn <craig@craigosborn.dev>"]
 description = "A Cloud Optimized GeoTIFF library for Rust"
 
 [features]
-default = ["image", "async"]
+default = ["image", "async", "http", "fs", "s3"]
 async = ["tokio", "futures"]
+http = ["async", "reqwest"]
+fs = ["async"]
+s3 = ["async", "aws-config", "aws-sdk-s3"]
 
 [profile.dev]
 opt-level = 3
@@ -15,16 +18,22 @@ opt-level = 3
 [dependencies]
 eio = "0.1.2"
 miniz_oxide = "0.8.0"
+flate2 = { version = "1.0.34", features = ["zlib-ng"], default-features = false }
 num-traits = "0.2.19"
 num_enum = "0.7.3"
 salzweg = "0.1.4"
 image = { version = "0.25.2", optional = true }
 proj4rs = { version = "0.1.4", features = ["crs-definitions"] }
-tokio = { version = "1.40.0", features = ["fs", "rt-multi-thread", "macros"], optional = true }
+tokio = { version = "1.40.0", features = ["fs", "rt-multi-thread", "macros","sync"], optional = true }
 futures = { version = "0.3.30", optional = true }
+reqwest = { version ="0.12.7", optional = true }
+aws-config = { version="1.5.6",optional = true }
+aws-sdk-s3 = { version="1.51.0",optional = true }
+tracing = "0.1.40"
+rayon = "1.10.0"
 
 [dev-dependencies]
 actix-web = "4.9.0"
 async_http_range_reader = "0.8.0"
-reqwest = "0.12.7"
 http = "1.1.0"
+tracing-subscriber = "0.3.18"
