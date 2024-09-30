@@ -8,9 +8,10 @@ mod tiff;
 mod io;
 
 pub use cog::{CloudTiff, CloudTiffError};
+pub use io::{ReadRange, AsyncReadRange};
 
 #[cfg(feature = "fs")]
-pub use io::fs::PathReader;
+pub use io::path::PathReader;
 
 #[cfg(feature = "http")]
 pub use io::http::HttpReader;

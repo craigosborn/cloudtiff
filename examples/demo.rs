@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 const SAMPLE_COG: &str = "data/sample.tif";
+const OUTPUT_FILE: &str = "data/demo.jpg";
 
 fn main() {
     let file = File::open(SAMPLE_COG).unwrap();
@@ -22,5 +23,5 @@ fn save_preview(file: File) {
         .unwrap();
 
     let img: DynamicImage = preview.try_into().unwrap();
-    img.save("data/preview.jpg").unwrap();
+    img.save(OUTPUT_FILE).unwrap();
 }

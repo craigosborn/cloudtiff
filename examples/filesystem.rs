@@ -1,4 +1,4 @@
-use cloudtiff::{CloudTiff, PathReader};
+use cloudtiff::CloudTiff;
 use image::DynamicImage;
 use std::fs::File;
 use std::io::BufReader;
@@ -13,11 +13,11 @@ fn main() {
     // File access
     println!("Opening `{SAMPLE_COG}`");
     let file = File::open(SAMPLE_COG).unwrap();
-    let reader = &mut BufReader::new(file);
+    let mut reader = BufReader::new(file);
 
     // CloudTiff indexing
     let t_cog = Instant::now();
-    let cog = CloudTiff::open(reader).unwrap();
+    let cog = CloudTiff::open(&mut reader).unwrap();
     println!("Indexed COG in {}us", t_cog.elapsed().as_micros());
     println!("{cog}");
 
@@ -26,7 +26,7 @@ fn main() {
     let preview = cog
         .renderer()
         .with_mp_limit(10.0)
-        .with_reader(PathReader::new(SAMPLE_COG))
+        .with_reader(reader)
         .render()
         .unwrap();
     println!("Got preview in {:.3}ms", t_tile.elapsed().as_secs_f32() * 1e3);
