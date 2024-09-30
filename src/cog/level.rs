@@ -142,7 +142,7 @@ impl Level {
         Ok((offset, offset + byte_count as u64))
     }
 
-    pub fn extract_tile_bytes(&self, bytes: &[u8]) -> Result<Raster, CloudTiffError> {
+    pub fn extract_tile_from_bytes(&self, bytes: &[u8]) -> Result<Raster, CloudTiffError> {
         // Decompression
         let mut buffer = self.compression.decode(bytes)?;
 

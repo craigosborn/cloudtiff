@@ -1,12 +1,13 @@
-use std::collections::HashMap;
 use crate::cog::{CloudTiff, CloudTiffResult};
-use crate::io::ReadRange;
+use crate::io::ReaderFlavor;
 use crate::raster::Raster;
 use crate::CloudTiffError;
+use std::collections::HashMap;
+use std::io::{self, SeekFrom};
 
 pub fn render_image_region(
     cog: &CloudTiff,
-    reader: Box<dyn ReadRange>,
+    flavor: ReaderFlavor,
     region: (f64, f64, f64, f64),
     dimensions: (u32, u32),
 ) -> CloudTiffResult<Raster> {
@@ -37,15 +38,33 @@ pub fn render_image_region(
     let mut tile_cache: HashMap<usize, Raster> = HashMap::new(); // TODO stream rather than cache
     let indices = level.tile_indices_within_image_region(region);
 
-    let tile_results: Vec<_> = indices.into_iter().map(|index|{
-       match level.tile_byte_range(index) {
-        Ok((start, end)) => match reader.read_range(start, end) {
-            Ok(bytes) => level.extract_tile_bytes(&bytes).map(|tile|(index,tile)),
-            Err(e) => Err(CloudTiffError::from(e))
-        }
-        Err(e) => Err(e)
-       }
-    }).collect();
+    let tile_results: Vec<_> = indices
+        .into_iter()
+        .map(|index| match level.tile_byte_range(index) {
+            Ok((start, end)) => match match &flavor {
+                ReaderFlavor::ReadRange(reader) => reader.read_range(start, end),
+                ReaderFlavor::ReadSeek(reader) => match reader.lock() {
+                    Ok(mut locked_reader) => match locked_reader.seek(SeekFrom::Start(start)) {
+                        Ok(_) => {
+                            let mut buffer = vec![0; (end - start) as usize];
+                            match locked_reader.read(&mut buffer) {
+                                Ok(_) => Ok(buffer),
+                                Err(e) => Err(e),
+                            }
+                        }
+                        Err(e) => Err(e),
+                    },
+                    Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{e:?}"))),
+                },
+            } {
+                Ok(bytes) => level
+                    .extract_tile_from_bytes(&bytes)
+                    .map(|tile| (index, tile)),
+                Err(e) => Err(CloudTiffError::from(e)),
+            },
+            Err(e) => Err(e),
+        })
+        .collect();
 
     // while let Some(result) = join_set.join_next() {
     for result in tile_results {
