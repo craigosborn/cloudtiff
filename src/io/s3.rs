@@ -1,6 +1,6 @@
 #![cfg(feature = "s3")]
 
-use super::ReadRangeAsync;
+use super::AsyncReadRange;
 use aws_sdk_s3::{self, operation::get_object::builders::GetObjectFluentBuilder, Client};
 use futures::future::BoxFuture;
 use futures::FutureExt;
@@ -21,7 +21,7 @@ impl S3Reader {
     }
 }
 
-impl ReadRangeAsync for S3Reader {
+impl AsyncReadRange for S3Reader {
     fn read_range_async(&self, start: u64, end: u64) -> BoxFuture<'static, Result<Vec<u8>>> {
         let req = self.request.clone().range(format!("bytes={start}-{end}"));
         async move {
@@ -29,11 +29,11 @@ impl ReadRangeAsync for S3Reader {
                 .send()
                 .await
                 .map_err(|e| Error::new(ErrorKind::NotConnected, format!("{e:?}")))?;
-            match response.body().bytes() {
-                Some(slice) => Ok(slice.to_vec()),
-                None => Err(Error::new(
+            match response.body.collect().await {
+                Ok(slice) => Ok(slice.to_vec()),
+                Err(e) => Err(Error::new(
                     ErrorKind::InvalidData,
-                    format!("No Bytes From ByteStream"),
+                    format!("ByteStream Error: {e:?}"),
                 )),
             }
         }

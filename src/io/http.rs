@@ -1,6 +1,6 @@
 #![cfg(feature = "http")]
 
-use super::ReadRangeAsync;
+use super::AsyncReadRange;
 use futures::future::BoxFuture;
 use futures::FutureExt;
 use reqwest::header::RANGE;
@@ -19,7 +19,7 @@ impl HttpReader {
     }
 }
 
-impl ReadRangeAsync for HttpReader {
+impl AsyncReadRange for HttpReader {
     fn read_range_async(&self, start: u64, end: u64) -> BoxFuture<'static, Result<Vec<u8>>> {
         let url = self.0.clone();
         async move {
