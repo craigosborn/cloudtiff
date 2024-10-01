@@ -9,6 +9,7 @@ pub use unit::UnitRegion;
 
 // COG Projection
 //   TODO verify 3D support
+//   TODO recognize units (e.g. degrees vs radians)
 
 #[derive(Debug)]
 pub enum ProjectionError {

@@ -1,7 +1,7 @@
 use crate::geotags::GeoTags;
 use crate::tiff::Tiff;
 use std::fmt::Display;
-use std::io::{Read, Seek};
+use std::io::{BufReader, Read, Seek};
 
 mod compression;
 mod error;
@@ -9,8 +9,7 @@ mod level;
 mod projection;
 pub mod render;
 
-
-pub use error::{CloudTiffError,CloudTiffResult};
+pub use error::{CloudTiffError, CloudTiffResult};
 pub use level::Level;
 pub use projection::Projection;
 
@@ -20,8 +19,45 @@ pub struct CloudTiff {
     projection: Projection,
 }
 
+#[cfg(feature = "async")]
+use {
+    std::io::{Cursor, ErrorKind},
+    tokio::io::{AsyncRead, AsyncReadExt},
+};
+
+#[cfg(feature = "async")]
 impl CloudTiff {
-    pub fn open<R: Read + Seek>(stream: &mut R) -> CloudTiffResult<Self> {
+    pub async fn open_async<R: AsyncRead + Unpin>(source: &mut R) -> CloudTiffResult<Self> {
+        let fetch_size = 4096;
+        let mut result = Err(CloudTiffError::TODO);
+        let mut buffer = Vec::with_capacity(fetch_size);
+        for _i in 0..10 {
+            println!("Fetch {_i}");
+            let mut bytes = vec![0; fetch_size];
+            let n = source.read(&mut bytes).await?;
+            if n == 0 {
+                break;
+            }
+            buffer.extend_from_slice(&bytes[..n]);
+
+            let mut cursor = Cursor::new(&buffer);
+            result = Self::open(&mut cursor);
+            if let Err(CloudTiffError::ReadError(e)) = &result {
+                if matches!(e.kind(), ErrorKind::UnexpectedEof) {
+                    continue;
+                }
+            }
+            break;
+        }
+        result
+    }
+}
+
+impl CloudTiff {
+    pub fn open<R: Read + Seek>(source: &mut R) -> CloudTiffResult<Self> {
+        // TODO consider seeking source to start
+        let stream = &mut BufReader::new(source);
+
         // TIFF indexing
         let tiff = Tiff::open(stream)?;
 
@@ -64,7 +100,7 @@ impl CloudTiff {
     }
 
     pub fn aspect_ratio(&self) -> f64 {
-        let (w,h) = self.full_dimensions();
+        let (w, h) = self.full_dimensions();
         w as f64 / h as f64
     }
 
@@ -79,7 +115,7 @@ impl CloudTiff {
             .get(level)
             .ok_or(CloudTiffError::TileLevelOutOfRange((
                 level,
-                self.levels.len()-1,
+                self.levels.len() - 1,
             )))
     }
 

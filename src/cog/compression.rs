@@ -2,6 +2,9 @@
 // https://exiftool.org/TagNames/EXIF.html#Compression
 // https://github.com/image-rs/image-tiff/blob/master/src/decoder/mod.rs
 
+// TODO support jpeg
+// TODO decide on miniz_oxide vs flate2
+
 use std::io::{self, Read};
 // use miniz_oxide::inflate::{self,TINFLStatus};
 use num_enum::{FromPrimitive, IntoPrimitive};

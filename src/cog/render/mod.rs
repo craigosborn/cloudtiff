@@ -1,178 +1,158 @@
-use super::projection::{Projection, UnitRegion};
-use super::{CloudTiff, CloudTiffResult};
-use crate::io::{
-    AsyncReadRange, AsyncReadSeek, AsyncReaderFlavor, ReadRange, ReadSeek, ReaderFlavor,
-};
-use crate::raster::Raster;
-use std::marker::PhantomData;
+use std::io::{Read, Seek};
 use std::sync::{Arc, Mutex};
+
+use crate::cog::projection::{Projection, UnitRegion};
+use crate::cog::{CloudTiff, CloudTiffResult};
+use crate::io::{AsyncReadRange, ReadRange};
+use tokio::io::{AsyncRead, AsyncSeek};
 use tokio::sync::Mutex as AsyncMutex;
 
-mod nold;
-mod old;
+mod renderer;
+mod tiles;
+mod util;
 
-pub struct BuilderNotReady;
-pub struct BuilderReady;
-pub struct BuilderReadyAsync;
+pub struct ReaderRequired;
+
+pub struct SyncReader(Box<dyn ReadRange>);
+
+#[derive(Clone)]
+pub struct AsyncReader(Arc<dyn AsyncReadRange>);
 
 #[derive(Debug)]
-pub struct RenderBuilder<'a, T, BuilderReady> {
-    source: &'a T,
-    reader: Option<ReaderFlavor>,
-    async_reader: Option<AsyncReaderFlavor>,
-    input_projection: Projection,
-    input_region: UnitRegion,
-    output_projection: Projection,
-    output_region: UnitRegion,
-    output_resolution: (u32, u32),
-    _builder_status: PhantomData<BuilderReady>,
+pub struct RenderBuilder<'a, R> {
+    pub cog: &'a CloudTiff,
+    pub reader: R,
+    pub input_projection: Projection,
+    pub input_region: UnitRegion,
+    pub output_projection: Projection,
+    pub output_region: UnitRegion,
+    pub output_resolution: (u32, u32),
 }
 
 impl CloudTiff {
-    pub fn renderer(&self) -> RenderBuilder<CloudTiff, BuilderNotReady> {
+    pub fn renderer(&self) -> RenderBuilder<ReaderRequired> {
         RenderBuilder {
-            source: self,
-            reader: None,
-            async_reader: None,
+            cog: self,
+            reader: ReaderRequired,
             input_projection: self.projection.clone(),
             input_region: UnitRegion::default(),
             output_projection: self.projection.clone(),
             output_region: UnitRegion::default(),
             output_resolution: (1, 1),
-            _builder_status: PhantomData,
         }
     }
 }
 
-impl<'a> RenderBuilder<'a, CloudTiff, BuilderNotReady> {
-    pub fn with_reader<R: ReadSeek>(
-        mut self,
-        reader: R,
-    ) -> RenderBuilder<'a, CloudTiff, BuilderReady> {
-        self.reader = Some(ReaderFlavor::ReadSeek(Arc::new(Mutex::new(reader))));
-        self.into_ready()
-    }
-
-    pub fn with_range_reader<R: ReadRange>(
-        mut self,
-        reader: R,
-    ) -> RenderBuilder<'a, CloudTiff, BuilderReady> {
-        self.reader = Some(ReaderFlavor::ReadRange(Arc::new(reader)));
-        self.into_ready()
-    }
-
-    pub fn with_async_reader<R: AsyncReadSeek>(
-        mut self,
-        reader: R,
-    ) -> RenderBuilder<'a, CloudTiff, BuilderReadyAsync> {
-        self.async_reader = Some(AsyncReaderFlavor::AsyncReadSeek(Arc::new(AsyncMutex::new(
-            reader,
-        ))));
-        self.into_ready_async()
-    }
-
-    pub fn with_async_range_reader<R: AsyncReadRange>(
-        mut self,
-        reader: R,
-    ) -> RenderBuilder<'a, CloudTiff, BuilderReadyAsync> {
-        self.async_reader = Some(AsyncReaderFlavor::AsyncReadRange(Arc::new(reader)));
-        self.into_ready_async()
-    }
-
-    fn into_ready(self) -> RenderBuilder<'a, CloudTiff, BuilderReady> {
+impl<'a> RenderBuilder<'a, ReaderRequired> {
+    pub fn with_reader<R: Read + Seek + 'static>(self, reader: R) -> RenderBuilder<'a, SyncReader> {
         let Self {
-            source,
-            reader,
-            async_reader,
+            cog,
+            reader: _,
             input_projection,
             input_region,
             output_projection,
             output_region,
             output_resolution,
-            _builder_status,
         } = self;
         RenderBuilder {
-            source,
-            reader,
-            async_reader,
+            cog,
+            reader: SyncReader(Box::new(Mutex::new(reader))),
             input_projection,
             input_region,
             output_projection,
             output_region,
             output_resolution,
-            _builder_status: PhantomData,
         }
     }
 
-    fn into_ready_async(self) -> RenderBuilder<'a, CloudTiff, BuilderReadyAsync> {
+    pub fn with_range_reader<R: ReadRange + 'static>(
+        self,
+        reader: R,
+    ) -> RenderBuilder<'a, SyncReader> {
         let Self {
-            source,
-            reader,
-            async_reader,
+            cog,
+            reader: _,
             input_projection,
             input_region,
             output_projection,
             output_region,
             output_resolution,
-            _builder_status,
         } = self;
         RenderBuilder {
-            source,
-            reader,
-            async_reader,
+            cog,
+            reader: SyncReader(Box::new(reader)),
             input_projection,
             input_region,
             output_projection,
             output_region,
             output_resolution,
-            _builder_status: PhantomData,
+        }
+    }
+
+    // pub fn with_async_reader<R: AsyncRead + AsyncSeek + Send + Sync + Unpin + 'static>(
+    //     self,
+    //     reader: R,
+    // ) -> RenderBuilder<'a, AsyncReader> {
+    //     let Self {
+    //         cog,
+    //         reader: _,
+    //         input_projection,
+    //         input_region,
+    //         output_projection,
+    //         output_region,
+    //         output_resolution,
+    //     } = self;
+    //     RenderBuilder {
+    //         cog,
+    //         reader: AsyncReader(Arc::new(AsyncMutex::new(reader))),
+    //         input_projection,
+    //         input_region,
+    //         output_projection,
+    //         output_region,
+    //         output_resolution,
+    //     }
+    // }
+
+    pub fn with_async_range_reader<R: AsyncReadRange + 'static>(
+        self,
+        reader: R,
+    ) -> RenderBuilder<'a, AsyncReader> {
+        let Self {
+            cog,
+            reader: _,
+            input_projection,
+            input_region,
+            output_projection,
+            output_region,
+            output_resolution,
+        } = self;
+        RenderBuilder {
+            cog,
+            reader: AsyncReader(Arc::new(reader)),
+            input_projection,
+            input_region,
+            output_projection,
+            output_region,
+            output_resolution,
         }
     }
 }
 
-impl<'a, S> RenderBuilder<'a, CloudTiff, S> {
+impl<'a, S> RenderBuilder<'a, S> {
     pub fn with_exact_resolution(mut self, resolution: (u32, u32)) -> Self {
         self.output_resolution = resolution;
         self
     }
 
     pub fn with_mp_limit(mut self, max_megapixels: f64) -> Self {
-        let ar = self.source.aspect_ratio();
-        let mp = max_megapixels.min(self.source.full_megapixels());
-        let height = (mp * 1e6 / ar).sqrt();
-        let width = ar * height;
-        self.output_resolution = (width as u32, height as u32);
+        self.output_resolution =
+            util::resolution_from_mp_limit(self.cog.full_dimensions(), max_megapixels);
         self
     }
-}
 
-impl<'a> RenderBuilder<'a, CloudTiff, BuilderReady> {
-    pub fn render(self) -> CloudTiffResult<Raster> {
-        if let Some(flavor) = self.reader {
-            old::render_image_region(
-                self.source,
-                flavor,
-                self.output_region.as_f64(),
-                self.output_resolution,
-            )
-        } else {
-            panic!("Render should not be callable without Some(reader)");
-        }
-    }
-}
-
-impl<'a> RenderBuilder<'a, CloudTiff, BuilderReadyAsync> {
-    pub async fn render_async(self) -> CloudTiffResult<Raster> {
-        if let Some(async_flavor) = self.async_reader {
-            nold::ender_image_region_async(
-                self.source,
-                async_flavor,
-                self.output_region.as_f64(),
-                self.output_resolution,
-            )
-            .await
-        } else {
-            panic!("Render should not be callable without Some(async_reader)");
-        }
+    pub fn with_image_region(mut self, region: (f64, f64, f64, f64)) -> Self {
+        let (min_x, min_y, max_x, max_y) = region;
+        self.input_region = UnitRegion::new(min_x, min_y, max_x, max_y).unwrap(); // TODO
+        self
     }
 }
