@@ -1,6 +1,6 @@
 use aws_config::{self, Region};
 use aws_sdk_s3::{config::Config, Client};
-use cloudtiff::{AsyncReadRange, CloudTiff, S3Reader};
+use cloudtiff::{CloudTiff, S3Reader};
 use image::DynamicImage;
 use std::{io::Cursor, time::Instant};
 use tokio;

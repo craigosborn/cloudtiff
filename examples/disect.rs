@@ -5,6 +5,8 @@ use std::io::{BufReader, Seek, SeekFrom};
 const SAMPLE_COG: &str = "data/sample.tif";
 
 fn main() {
+    println!("Example: disect");
+    
     // File access
     println!("Opening `{SAMPLE_COG}`");
     let file = File::open(SAMPLE_COG).unwrap();

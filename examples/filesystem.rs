@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::time::Instant;
 
 const SAMPLE_COG: &str = "data/sample.tif";
-const OUTPUT_FILE: &str = "data/tile.tif";
+const OUTPUT_FILE: &str = "data/filesystem.tif";
 
 fn main() {
     println!("Example: cloudtiff + filesystem");
