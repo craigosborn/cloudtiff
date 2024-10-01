@@ -7,9 +7,11 @@ use std::fmt::Debug;
 use tokio::fs::File as TokioFile;
 
 impl ReadSeek for File {}
+impl ReadSeek for &'static mut File {}
 impl<R: Read + Seek + Debug + Sync + Send + 'static> ReadSeek for BufReader<R> {}
 
 impl AsyncReadSeek for TokioFile {}
+impl AsyncReadSeek for &'static mut TokioFile {}
 
 // impl ReadRange for File {
 //     fn read_range(&self, start: u64, end: u64) -> Result<Vec<u8>> {

@@ -1,7 +1,7 @@
 #![cfg(feature = "fs")]
 
-use super::ReadRange;
 use super::AsyncReadRange;
+use super::ReadRange;
 use super::ReadSeek;
 use futures::future::BoxFuture;
 use futures::FutureExt;
@@ -14,19 +14,19 @@ use std::path::{Path, PathBuf};
 use tokio::fs::File as TokioFile;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
-// TODO impl super::AsyncReadSeek
+// TODO impl AsyncReadSeek
 
 #[derive(Clone, Debug)]
-pub struct PathReader{
+pub struct PathReader {
     path: PathBuf,
     position: u64,
 }
 
 impl PathReader {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
-        Self{
+        Self {
             path: path.as_ref().to_path_buf(),
-            position: 0
+            position: 0,
         }
     }
 }
@@ -42,14 +42,17 @@ impl ReadRange for PathReader {
 }
 
 impl AsyncReadRange for PathReader {
-    fn read_range_async(&self, start: u64, end: u64) -> BoxFuture<'static, Result<Vec<u8>>> {
+    fn read_range_async(
+        &self,
+        start: u64,
+        end: u64,
+        buf: &'static mut [u8],
+    ) -> BoxFuture<'static, Result<usize>> {
         let path = self.path.clone();
         async move {
             let mut file = TokioFile::open(path).await?;
             file.seek(SeekFrom::Start(start)).await?;
-            let mut buffer = vec![0; (end - start) as usize];
-            file.read_exact(&mut buffer).await?;
-            Ok(buffer)
+            file.read(buf).await
         }
         .boxed()
     }

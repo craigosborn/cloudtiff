@@ -22,7 +22,9 @@ impl S3Reader {
 }
 
 impl AsyncReadRange for S3Reader {
-    fn read_range_async(&self, start: u64, end: u64) -> BoxFuture<'static, Result<Vec<u8>>> {
+    fn read_range_async<'a>(&'a self, start: u64, buf: &'a mut [u8]) -> BoxFuture<Result<usize>> {
+        let end = start + buf.len() as u64;
+        println!("s3 buf: {}", buf.len());
         let req = self.request.clone().range(format!("bytes={start}-{end}"));
         async move {
             let response = req
