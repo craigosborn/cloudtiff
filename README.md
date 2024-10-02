@@ -21,8 +21,8 @@ A Cloud Optimized GeoTIFF library for Rust
 
 ### Limitations
 
-* Predictor supports None or Horizontal 8bit
-* Decompression supports None or Lzw or Deflate
+* Predictor only supports None or Horizontal 8bit
+* Decompression only supports None or Lzw or Deflate
 
 
 ## Use
