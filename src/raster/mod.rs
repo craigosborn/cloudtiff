@@ -100,9 +100,9 @@ impl Raster {
         Some(pixel)
     }
 
-    pub fn put_pixel(&mut self, x: u32, y: u32, pixel: Vec<u8>) -> Option<()> {
+    pub fn put_pixel(&mut self, x: u32, y: u32, pixel: Vec<u8>) -> Result<(), String> {
         if x >= self.dimensions.0 || y >= self.dimensions.1 {
-            return None;
+            return Err("Bad pixel index".into());
         }
 
         let bytes_per_row = self.row_size();
@@ -119,8 +119,7 @@ impl Raster {
         let n = end - start;
 
         if pixel.len() != n {
-            println!("bad pixel size");
-            return None;
+            return Err("Bad pixel size".into());
         }
 
         let start_mask = 0xFF_u8 >> (start_col_offset_bits - start_col_offset_bytes * 8);
@@ -136,7 +135,7 @@ impl Raster {
             self.buffer[start + i] = pixel[i];
         }
 
-        Some(())
+        Ok(())
     }
 
     // fn bits_per_pixel(&self) -> u16 {

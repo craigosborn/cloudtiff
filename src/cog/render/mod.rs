@@ -1,11 +1,17 @@
 use std::io::{Read, Seek};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use crate::cog::projection::{Projection, UnitRegion};
 use crate::cog::{CloudTiff, CloudTiffResult};
-use crate::io::{AsyncReadRange, ReadRange};
-use tokio::io::{AsyncRead, AsyncSeek};
-use tokio::sync::Mutex as AsyncMutex;
+use crate::io::ReadRange;
+
+#[cfg(feature = "async")]
+use {
+    crate::io::AsyncReadRange,
+    std::sync::Arc,
+    tokio::io::{AsyncRead, AsyncSeek},
+    tokio::sync::Mutex as AsyncMutex,
+};
 
 mod renderer;
 mod tiles;
@@ -15,6 +21,7 @@ pub struct ReaderRequired;
 
 pub struct SyncReader(Box<dyn ReadRange>);
 
+#[cfg(feature = "async")]
 #[derive(Clone)]
 pub struct AsyncReader(Arc<dyn AsyncReadRange>);
 
@@ -89,30 +96,32 @@ impl<'a> RenderBuilder<'a, ReaderRequired> {
         }
     }
 
-    // pub fn with_async_reader<R: AsyncRead + AsyncSeek + Send + Sync + Unpin + 'static>(
-    //     self,
-    //     reader: R,
-    // ) -> RenderBuilder<'a, AsyncReader> {
-    //     let Self {
-    //         cog,
-    //         reader: _,
-    //         input_projection,
-    //         input_region,
-    //         output_projection,
-    //         output_region,
-    //         output_resolution,
-    //     } = self;
-    //     RenderBuilder {
-    //         cog,
-    //         reader: AsyncReader(Arc::new(AsyncMutex::new(reader))),
-    //         input_projection,
-    //         input_region,
-    //         output_projection,
-    //         output_region,
-    //         output_resolution,
-    //     }
-    // }
+    #[cfg(feature = "async")]
+    pub fn with_async_reader<R: AsyncRead + AsyncSeek + Send + Sync + Unpin + 'static>(
+        self,
+        reader: Arc<AsyncMutex<R>>,
+    ) -> RenderBuilder<'a, AsyncReader> {
+        let Self {
+            cog,
+            reader: _,
+            input_projection,
+            input_region,
+            output_projection,
+            output_region,
+            output_resolution,
+        } = self;
+        RenderBuilder {
+            cog,
+            reader: AsyncReader(reader),
+            input_projection,
+            input_region,
+            output_projection,
+            output_region,
+            output_resolution,
+        }
+    }
 
+    #[cfg(feature = "async")]
     pub fn with_async_range_reader<R: AsyncReadRange + 'static>(
         self,
         reader: R,

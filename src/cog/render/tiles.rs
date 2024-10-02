@@ -1,4 +1,4 @@
-use super::{AsyncReader, SyncReader};
+use super::SyncReader;
 use crate::cog::Level;
 use crate::raster::Raster;
 use std::collections::HashMap;
@@ -39,6 +39,7 @@ pub use not_sync::*;
 #[cfg(feature = "async")]
 mod not_sync {
     use super::*;
+    use super::super::AsyncReader;
     use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
     pub async fn get_tiles_async(
@@ -100,7 +101,7 @@ mod not_sync {
                     tile_cache.insert(index, tile);
                 }
                 Err(e) => {
-                    println!("Failed to get tile: {e:?}")
+                    warn!("Failed to get tile: {e:?}")
                 }
             }
         }

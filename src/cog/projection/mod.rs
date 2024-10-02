@@ -51,7 +51,6 @@ impl Projection {
         };
         let proj = Proj::from_epsg_code(epsg)?;
         // let units = proj.units();
-        // println!("units: {units:?}");
 
         // TODO there has to be a better way...
         let unit_gain = match (
