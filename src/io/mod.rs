@@ -136,7 +136,7 @@ mod not_sync {
             Box::pin(async move {
                 let mut locked_self = self.lock().await;
                 locked_self.seek(std::io::SeekFrom::Start(start)).await?;
-                locked_self.read(buf).await
+                locked_self.read_exact(buf).await
             })
         }
     }
