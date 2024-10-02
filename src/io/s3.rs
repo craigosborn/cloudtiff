@@ -3,7 +3,6 @@
 use super::AsyncReadRange;
 use aws_sdk_s3::{self, operation::get_object::builders::GetObjectFluentBuilder, Client};
 use futures::future::BoxFuture;
-use futures::FutureExt;
 use std::io::{Error, ErrorKind, Result};
 
 #[derive(Clone, Debug)]
@@ -23,22 +22,30 @@ impl S3Reader {
 
 impl AsyncReadRange for S3Reader {
     fn read_range_async<'a>(&'a self, start: u64, buf: &'a mut [u8]) -> BoxFuture<Result<usize>> {
-        let end = start + buf.len() as u64;
-        println!("s3 buf: {}", buf.len());
-        let req = self.request.clone().range(format!("bytes={start}-{end}"));
-        async move {
-            let response = req
-                .send()
+        let n = buf.len();
+        let end = start + n as u64 - 1; // GOTCHA byte range includes end
+        let request_builder = self.request.clone().range(format!("bytes={start}-{end}"));
+
+        Box::pin(async move {
+            let request = request_builder.send();
+            let mut response = request
                 .await
                 .map_err(|e| Error::new(ErrorKind::NotConnected, format!("{e:?}")))?;
-            match response.body.collect().await {
-                Ok(slice) => Ok(slice.to_vec()),
-                Err(e) => Err(Error::new(
-                    ErrorKind::InvalidData,
-                    format!("ByteStream Error: {e:?}"),
-                )),
+
+            let mut pos = 0;
+            while let Some(bytes) = response.body.try_next().await.map_err(|err| {
+                Error::new(
+                    ErrorKind::Interrupted,
+                    format!("Failed to read from S3 download stream: {err:?}"),
+                )
+            })? {
+                let bytes_len = bytes.len();
+                let bytes_top = bytes_len.min(n - pos);
+                let buf_top = n.min(pos + bytes_len);
+                buf[pos..buf_top].copy_from_slice(&bytes[..bytes_top]);
+                pos += bytes_len;
             }
-        }
-        .boxed()
+            Ok(pos)
+        })
     }
 }

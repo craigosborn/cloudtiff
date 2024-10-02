@@ -9,15 +9,13 @@
 //     fn read_range_to_vec(&self, start: u64, end: u64) -> Result<()> { ... }
 //   Async has similar
 
-use futures::future::BoxFuture;
-use futures::FutureExt;
-use std::io::{Error, ErrorKind, Read, Result, Seek};
+use std::io::{Error, ErrorKind, Result};
+use std::io::{Read, Seek};
 use std::sync::Mutex;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt};
-use tokio::sync::Mutex as TokioMutex;
 
 pub mod http;
 pub mod s3;
+
 pub trait ReadRange {
     /// Read bytes from a specific offset
     ///
@@ -64,71 +62,82 @@ impl<R: Read + Seek> ReadRange for Mutex<R> {
     }
 }
 
-pub trait AsyncReadRange: Send + Sync {
-    /// Asynchronously read bytes from a specific offset
-    ///
-    /// This is a superset of tokio::io::{AsyncRead + AsyncSeek} with a key difference that
-    /// self is immutable. This is a useful abstraction for concurrent http byte-range requests.
-    ///
-    /// Required methods
-    ///   fn read_range(&self, start: u64, buf: &mut [u8]) -> Result<usize>;
-    ///
-    /// Provided methods
-    ///   fn read_range_exact(&self, start: u64, buf: &mut [u8]) -> Result<()> { ... }
-    ///   fn read_range_to_vec(&self, start: u64, end: u64) -> Result<()> { ... }
+#[cfg(feature = "async")]
+pub use not_sync::*;
+#[cfg(feature = "async")]
+mod not_sync {
+    use super::*;
+    use futures::future::BoxFuture;
+    use futures::FutureExt;
+    use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt};
+    use tokio::sync::Mutex as TokioMutex;
 
-    fn read_range_async<'a>(
-        &'a self,
-        start: u64,
-        buf: &'a mut [u8],
-    ) -> BoxFuture<'a, Result<usize>>;
+    pub trait AsyncReadRange: Send + Sync {
+        /// Asynchronously read bytes from a specific offset
+        ///
+        /// This is a superset of tokio::io::{AsyncRead + AsyncSeek} with a key difference that
+        /// self is immutable. This is a useful abstraction for concurrent http byte-range requests.
+        ///
+        /// Required methods
+        ///   fn read_range(&self, start: u64, buf: &mut [u8]) -> Result<usize>;
+        ///
+        /// Provided methods
+        ///   fn read_range_exact(&self, start: u64, buf: &mut [u8]) -> Result<()> { ... }
+        ///   fn read_range_to_vec(&self, start: u64, end: u64) -> Result<()> { ... }
 
-    fn read_range_exact_async<'a>(
-        &'a self,
-        start: u64,
-        buf: &'a mut [u8],
-    ) -> BoxFuture<'a, Result<usize>> {
-        let n = buf.len();
-        async move {
-            match self.read_range_async(start, buf).await {
-                Ok(bytes_read) if bytes_read == n => Ok(bytes_read),
-                Ok(bytes_read) => Err(Error::new(
-                    ErrorKind::UnexpectedEof,
-                    format!("Failed to completely fill buffer: {bytes_read} < {n}"),
-                )),
-                Err(e) => Err(e),
+        fn read_range_async<'a>(
+            &'a self,
+            start: u64,
+            buf: &'a mut [u8],
+        ) -> BoxFuture<'a, Result<usize>>;
+
+        fn read_range_exact_async<'a>(
+            &'a self,
+            start: u64,
+            buf: &'a mut [u8],
+        ) -> BoxFuture<'a, Result<()>> {
+            let n = buf.len();
+            async move {
+                match self.read_range_async(start, buf).await {
+                    Ok(bytes_read) if bytes_read == n => Ok(()),
+                    Ok(bytes_read) => Err(Error::new(
+                        ErrorKind::UnexpectedEof,
+                        format!("Failed to completely fill buffer: {bytes_read} < {n}"),
+                    )),
+                    Err(e) => Err(e),
+                }
             }
+            .boxed()
         }
-        .boxed()
+
+        fn read_range_to_vec_async(&self, start: u64, end: u64) -> BoxFuture<Result<Vec<u8>>> {
+            let n = (end - start) as usize;
+            Box::pin(async move {
+                let mut buf = vec![0; n];
+                match self.read_range_async(start, &mut buf).await {
+                    Ok(bytes_read) if bytes_read == n => Ok(buf),
+                    Ok(bytes_read) => Err(Error::new(
+                        ErrorKind::UnexpectedEof,
+                        format!("Failed to completely fill buffer: {bytes_read} < {n}"),
+                    )),
+                    Err(e) => Err(e),
+                }
+            })
+        }
     }
 
-    // fn read_range_to_vec_async(&'a self, start: u64, end: u64) -> BoxFuture<Result<Vec<u8>>> {
-    // TODO LIFETIMES ARE HARD
-    //     let n = (end - start) as usize;
-    //     let mut buffer =  vec![0; n];
-    //     let buf: &'a Vec<u8> =  &mut buffer;
-    //     async move {
-    //         match self.read_range_async(start, buf).await {
-    //             Ok(bytes_read) if bytes_read == n => Ok(buffer),
-    //             Ok(bytes_read) => Err(Error::new(
-    //                 ErrorKind::UnexpectedEof,
-    //                 format!("Failed to completely fill buffer: {bytes_read} < {n}"),
-    //             )),
-    //             Err(e) => Err(e),
-    //         }
-    //     }
-    //     .boxed()
-    // }
-}
-
-impl<R: AsyncRead + AsyncSeek + Send + Sync + Unpin> AsyncReadRange for TokioMutex<R> {
-    fn read_range_async<'a>(&'a self, start: u64, buf: &'a mut [u8]) -> BoxFuture<Result<usize>> {
-        // Yes, it is rather ugly... but so is async.
-        async move {
-            let mut locked_self = self.lock().await;
-            locked_self.seek(std::io::SeekFrom::Start(start)).await?;
-            locked_self.read(buf).await
+    impl<R: AsyncRead + AsyncSeek + Send + Sync + Unpin> AsyncReadRange for TokioMutex<R> {
+        fn read_range_async<'a>(
+            &'a self,
+            start: u64,
+            buf: &'a mut [u8],
+        ) -> BoxFuture<'a, Result<usize>> {
+            // Yes, it is rather ugly... but so is async.
+            Box::pin(async move {
+                let mut locked_self = self.lock().await;
+                locked_self.seek(std::io::SeekFrom::Start(start)).await?;
+                locked_self.read(buf).await
+            })
         }
-        .boxed()
     }
 }
