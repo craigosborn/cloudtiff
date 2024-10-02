@@ -1,3 +1,6 @@
+#[cfg(not(feature = "image"))]
+compile_error!("This example requires the 'image' feature");
+
 use cloudtiff::CloudTiff;
 use image::DynamicImage;
 use std::fs::File;
@@ -5,7 +8,8 @@ use std::io::BufReader;
 use std::time::Instant;
 
 const SAMPLE_COG: &str = "data/sample.tif";
-const OUTPUT_FILE: &str = "data/filesystem.tif";
+const OUTPUT_FILE: &str = "data/filesystem.jpg";
+const PREVIEW_MEGAPIXELS: f64 = 1.0;
 
 fn main() {
     println!("Example: cloudtiff + filesystem");
@@ -25,7 +29,7 @@ fn main() {
     let t_tile = Instant::now();
     let preview = cog
         .renderer()
-        .with_mp_limit(10.0)
+        .with_mp_limit(PREVIEW_MEGAPIXELS)
         .with_reader(reader)
         .render()
         .unwrap();
