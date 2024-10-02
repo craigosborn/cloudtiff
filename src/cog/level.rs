@@ -1,5 +1,6 @@
 use super::compression::{Compression, Predictor};
 use super::CloudTiffError;
+use super::{Region, UnitFloat};
 use crate::endian::Endian;
 use crate::raster::{PhotometricInterpretation, Raster};
 use crate::tiff::{Ifd, TagId, TiffError};
@@ -71,12 +72,10 @@ impl Level {
         self.dimensions.1
     }
 
-    pub fn tile_indices_within_image_region(
-        &self,
-        region: (f64, f64, f64, f64), // (left, top, right, bottom)
-    ) -> Vec<usize> {
-        let (left, top) = self.tile_coord_from_image_coord(region.0, region.1);
-        let (right, bottom) = self.tile_coord_from_image_coord(region.2, region.3);
+    pub fn tile_indices_within_image_crop(&self, crop: Region<UnitFloat>) -> Vec<usize> {
+        let (left, top) = self.tile_coord_from_image_coord(crop.x.min.into(), crop.y.min.into());
+        let (right, bottom) =
+            self.tile_coord_from_image_coord(crop.x.max.into(), crop.y.max.into());
 
         let col_count = self.col_count();
         let row_count = self.row_count();
@@ -122,10 +121,7 @@ impl Level {
         (col, row)
     }
 
-    pub fn tile_byte_range(
-        &self,
-        index: usize,
-    ) -> Result<(u64,u64), CloudTiffError> {
+    pub fn tile_byte_range(&self, index: usize) -> Result<(u64, u64), CloudTiffError> {
         // Validate index
         let max_valid_index = self.offsets.len().min(self.byte_counts.len()) - 1;
         if index > max_valid_index {

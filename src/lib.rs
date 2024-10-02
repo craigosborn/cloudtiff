@@ -6,6 +6,7 @@ mod raster;
 mod tiff;
 
 pub use cog::{CloudTiff, CloudTiffError};
+pub use cog::{Point2D, Region};
 
 // IO exports
 #[cfg(feature = "http")]

@@ -1,11 +1,10 @@
 use crate::geotags::{GeoKeyId, GeoTags};
+use primatives::Region;
 use proj4rs::errors::Error as Proj4Error;
 use proj4rs::proj::Proj;
 use proj4rs::transform::transform;
 
-pub mod unit;
-
-pub use unit::UnitRegion;
+pub mod primatives;
 
 // COG Projection
 //   TODO verify 3D support
@@ -131,6 +130,23 @@ impl Projection {
         Ok((u, v, w))
     }
 
+    pub fn transform_from_proj(
+        &self,
+        from: &Proj,
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> Result<(f64, f64, f64), ProjectionError> {
+        let mut point = (x, y, z);
+        transform(from, &self.proj, &mut point)?;
+
+        let u = (point.0 - self.origin.0) / self.scale.0;
+        let v = (self.origin.1 - point.1) / self.scale.1;
+        let w = point.2 - self.origin.2; // TODO verify this calc
+
+        Ok((u, v, w))
+    }
+
     pub fn transform_into(
         &self,
         u: f64,
@@ -148,19 +164,41 @@ impl Projection {
         Ok(point)
     }
 
-    pub fn bounds_lat_lon_deg(&self) -> Result<(f64, f64, f64, f64), ProjectionError> {
-        let (west, north, east, south) = self.bounds(4326)?;
-        Ok((
-            north.to_degrees(),
-            west.to_degrees(),
-            south.to_degrees(),
-            east.to_degrees(),
+    pub fn transform_into_proj(
+        &self,
+        to: &Proj,
+        u: f64,
+        v: f64,
+        w: f64,
+    ) -> Result<(f64, f64, f64), ProjectionError> {
+        let x = self.origin.0 + u * self.scale.0;
+        let y = self.origin.1 - v * self.scale.1;
+        let z = self.origin.2 + w; // TODO verify this calc
+
+        let mut point = (x, y, z);
+        transform(&self.proj, &to, &mut point)?;
+        Ok(point)
+    }
+
+    pub fn bounds_lat_lon_deg(&self) -> Result<Region<f64>, ProjectionError> {
+        let radians = self.bounds(4326)?;
+        Ok(Region::new(
+            radians.x.min.to_degrees(),
+            radians.y.min.to_degrees(),
+            radians.x.max.to_degrees(),
+            radians.y.max.to_degrees(),
         ))
     }
 
-    pub fn bounds(&self, epsg: u16) -> Result<(f64, f64, f64, f64), ProjectionError> {
+    pub fn bounds(&self, epsg: u16) -> Result<Region<f64>, ProjectionError> {
         let (left, top, _) = self.transform_into(0.0, 0.0, 0.0, epsg)?;
         let (right, bottom, _) = self.transform_into(1.0, 1.0, 0.0, epsg)?;
-        Ok((left, top, right, bottom))
+        Ok(Region::new(left, bottom, right, top))
+    }
+
+    pub fn bounds_in_proj(&self, proj: &Proj) -> Result<Region<f64>, ProjectionError> {
+        let (left, top, _) = self.transform_into_proj(&proj, 0.0, 0.0, 0.0)?;
+        let (right, bottom, _) = self.transform_into_proj(&proj, 1.0, 1.0, 0.0)?;
+        Ok(Region::new(left, bottom, right, top))
     }
 }

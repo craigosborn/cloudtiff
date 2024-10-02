@@ -6,11 +6,12 @@ use std::io::{BufReader, Read, Seek};
 mod compression;
 mod error;
 mod level;
-mod projection;
+pub mod projection;
 pub mod render;
 
 pub use error::{CloudTiffError, CloudTiffResult};
 pub use level::Level;
+pub use projection::primatives::{Interval, Point2D, Region, UnitFloat};
 pub use projection::Projection;
 
 #[derive(Clone, Debug)]
@@ -21,14 +22,16 @@ pub struct CloudTiff {
 
 #[cfg(feature = "async")]
 use {
+    crate::io::AsyncReadRange,
     std::io::{Cursor, ErrorKind},
     tokio::io::{AsyncRead, AsyncReadExt},
-    crate::io::AsyncReadRange,
 };
 
 #[cfg(feature = "async")]
 impl CloudTiff {
-    pub async fn open_from_async_range_reader<R: AsyncReadRange>(source: &R) -> CloudTiffResult<Self> {
+    pub async fn open_from_async_range_reader<R: AsyncReadRange>(
+        source: &R,
+    ) -> CloudTiffResult<Self> {
         let fetch_size = 4096;
         let mut result = Err(CloudTiffError::TODO);
         let mut buffer = Vec::with_capacity(fetch_size);
@@ -110,7 +113,7 @@ impl CloudTiff {
         Ok(Self { levels, projection })
     }
 
-    pub fn bounds_lat_lon_deg(&self) -> CloudTiffResult<(f64, f64, f64, f64)> {
+    pub fn bounds_lat_lon_deg(&self) -> CloudTiffResult<Region<f64>> {
         Ok(self.projection.bounds_lat_lon_deg()?)
     }
 

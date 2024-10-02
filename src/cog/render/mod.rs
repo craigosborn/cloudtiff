@@ -1,9 +1,8 @@
+use crate::cog::{CloudTiff, CloudTiffResult};
+use crate::cog::{Projection, Region, UnitFloat};
+use crate::io::ReadRange;
 use std::io::{Read, Seek};
 use std::sync::Mutex;
-
-use crate::cog::projection::{Projection, UnitRegion};
-use crate::cog::{CloudTiff, CloudTiffResult};
-use crate::io::ReadRange;
 
 #[cfg(feature = "async")]
 use {
@@ -19,7 +18,7 @@ mod util;
 
 pub struct ReaderRequired;
 
-pub struct SyncReader(Box<dyn ReadRange>);
+pub struct SyncReader(Arc<dyn ReadRange>);
 
 #[cfg(feature = "async")]
 #[derive(Clone)]
@@ -30,10 +29,14 @@ pub struct RenderBuilder<'a, R> {
     pub cog: &'a CloudTiff,
     pub reader: R,
     pub input_projection: Projection,
-    pub input_region: UnitRegion,
-    pub output_projection: Projection,
-    pub output_region: UnitRegion,
-    pub output_resolution: (u32, u32),
+    pub region: RenderRegion,
+    pub resolution: (u32, u32),
+}
+
+#[derive(Debug)]
+pub enum RenderRegion {
+    InputCrop(Region<UnitFloat>),
+    OutputRegion((u16, Region<f64>)),
 }
 
 impl CloudTiff {
@@ -42,58 +45,48 @@ impl CloudTiff {
             cog: self,
             reader: ReaderRequired,
             input_projection: self.projection.clone(),
-            input_region: UnitRegion::default(),
-            output_projection: self.projection.clone(),
-            output_region: UnitRegion::default(),
-            output_resolution: (1, 1),
+            region: RenderRegion::InputCrop(Region::unit()),
+            resolution: (1024, 1024),
+        }
+    }
+}
+
+impl<'a, S> RenderBuilder<'a, S> {
+    fn set_reader<R>(self, reader: R) -> RenderBuilder<'a, R> {
+        let Self {
+            cog,
+            reader: _,
+            input_projection,
+            region,
+            resolution,
+        } = self;
+        RenderBuilder {
+            cog,
+            reader,
+            input_projection,
+            region,
+            resolution,
         }
     }
 }
 
 impl<'a> RenderBuilder<'a, ReaderRequired> {
     pub fn with_reader<R: Read + Seek + 'static>(self, reader: R) -> RenderBuilder<'a, SyncReader> {
-        let Self {
-            cog,
-            reader: _,
-            input_projection,
-            input_region,
-            output_projection,
-            output_region,
-            output_resolution,
-        } = self;
-        RenderBuilder {
-            cog,
-            reader: SyncReader(Box::new(Mutex::new(reader))),
-            input_projection,
-            input_region,
-            output_projection,
-            output_region,
-            output_resolution,
-        }
+        self.set_reader(SyncReader(Arc::new(Mutex::new(reader))))
+    }
+
+    pub fn with_arc_mutex_reader<R: Read + Seek + 'static>(
+        self,
+        reader: Arc<Mutex<R>>,
+    ) -> RenderBuilder<'a, SyncReader> {
+        self.set_reader(SyncReader(reader))
     }
 
     pub fn with_range_reader<R: ReadRange + 'static>(
         self,
         reader: R,
     ) -> RenderBuilder<'a, SyncReader> {
-        let Self {
-            cog,
-            reader: _,
-            input_projection,
-            input_region,
-            output_projection,
-            output_region,
-            output_resolution,
-        } = self;
-        RenderBuilder {
-            cog,
-            reader: SyncReader(Box::new(reader)),
-            input_projection,
-            input_region,
-            output_projection,
-            output_region,
-            output_resolution,
-        }
+        self.set_reader(SyncReader(Arc::new(reader)))
     }
 
     #[cfg(feature = "async")]
@@ -101,24 +94,7 @@ impl<'a> RenderBuilder<'a, ReaderRequired> {
         self,
         reader: Arc<AsyncMutex<R>>,
     ) -> RenderBuilder<'a, AsyncReader> {
-        let Self {
-            cog,
-            reader: _,
-            input_projection,
-            input_region,
-            output_projection,
-            output_region,
-            output_resolution,
-        } = self;
-        RenderBuilder {
-            cog,
-            reader: AsyncReader(reader),
-            input_projection,
-            input_region,
-            output_projection,
-            output_region,
-            output_resolution,
-        }
+        self.set_reader(AsyncReader(reader))
     }
 
     #[cfg(feature = "async")]
@@ -126,42 +102,60 @@ impl<'a> RenderBuilder<'a, ReaderRequired> {
         self,
         reader: R,
     ) -> RenderBuilder<'a, AsyncReader> {
-        let Self {
-            cog,
-            reader: _,
-            input_projection,
-            input_region,
-            output_projection,
-            output_region,
-            output_resolution,
-        } = self;
-        RenderBuilder {
-            cog,
-            reader: AsyncReader(Arc::new(reader)),
-            input_projection,
-            input_region,
-            output_projection,
-            output_region,
-            output_resolution,
-        }
+        self.set_reader(AsyncReader(Arc::new(reader)))
+    }
+
+    #[cfg(feature = "async")]
+    pub fn with_async_arc_range_reader<R: AsyncReadRange + 'static>(
+        self,
+        reader: Arc<R>,
+    ) -> RenderBuilder<'a, AsyncReader> {
+        self.set_reader(AsyncReader(reader))
     }
 }
 
 impl<'a, S> RenderBuilder<'a, S> {
     pub fn with_exact_resolution(mut self, resolution: (u32, u32)) -> Self {
-        self.output_resolution = resolution;
+        self.resolution = resolution;
         self
     }
 
     pub fn with_mp_limit(mut self, max_megapixels: f64) -> Self {
-        self.output_resolution =
+        self.resolution =
             util::resolution_from_mp_limit(self.cog.full_dimensions(), max_megapixels);
         self
     }
 
-    pub fn with_image_region(mut self, region: (f64, f64, f64, f64)) -> Self {
-        let (min_x, min_y, max_x, max_y) = region;
-        self.input_region = UnitRegion::new(min_x, min_y, max_x, max_y).unwrap(); // TODO
+    pub fn of_crop(mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Self {
+        self.region = RenderRegion::InputCrop(Region::new_saturated(min_x, min_y, max_x, max_y));
+        self
+    }
+
+    pub fn of_output_region_lat_lon_deg(
+        self,
+        west: f64,
+        south: f64,
+        north: f64,
+        east: f64,
+    ) -> Self {
+        self.of_output_region(
+            4326,
+            west.to_radians(),
+            south.to_radians(),
+            north.to_radians(),
+            east.to_radians(),
+        )
+    }
+
+    pub fn of_output_region(
+        mut self,
+        epsg: u16,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    ) -> Self {
+        self.region = RenderRegion::OutputRegion((epsg, Region::new(min_x, min_y, max_x, max_y)));
         self
     }
 }
