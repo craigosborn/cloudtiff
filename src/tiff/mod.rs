@@ -1,11 +1,12 @@
-use crate::endian::Endian;
 use std::fmt::Display;
 use std::io::{self, Read, Seek};
 
+mod endian;
 mod error;
 mod ifd;
 mod tag;
 
+pub use endian::Endian;
 pub use error::TiffError;
 pub use ifd::Ifd;
 pub use tag::{Tag, TagId, TagType};

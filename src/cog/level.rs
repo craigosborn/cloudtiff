@@ -1,9 +1,8 @@
 use super::compression::{Compression, Predictor};
 use super::CloudTiffError;
 use super::{Region, UnitFloat};
-use crate::endian::Endian;
 use crate::raster::{PhotometricInterpretation, Raster};
-use crate::tiff::{Ifd, TagId, TiffError};
+use crate::tiff::{Ifd, TagId, TiffError, Endian};
 use std::fmt::Display;
 
 #[derive(Clone, Debug)]

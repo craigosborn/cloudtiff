@@ -40,7 +40,6 @@ impl AsyncReadRange for HttpReader {
         let request_builder = Client::new()
             .get(self.url.clone())
             .header(RANGE, format!("bytes={start}-{end}"));
-        // .timeout(Duration::from_millis(1000));
 
         Box::pin(async move {
             let request = request_builder.send();
@@ -57,26 +56,4 @@ impl AsyncReadRange for HttpReader {
             Ok(bytes.len())
         })
     }
-
-    // fn read_range_to_vec_async<'a>(
-    //     &'a self,
-    //     start: u64,
-    //     end: u64,
-    // ) -> BoxFuture<'a, Result<Vec<u8>>> {
-    //     let request_builder = Client::new()
-    //         .get(self.url.clone())
-    //         .header(RANGE, format!("bytes={start}-{end}"));
-
-    //     Box::pin(async move {
-    //         let request = request_builder.send();
-    //         let response = request
-    //             .await
-    //             .map_err(|e| Error::new(ErrorKind::NotConnected, format!("{e:?}")))?;
-
-    //         match response.bytes().await {
-    //             Ok(bytes) => Ok(bytes.to_vec()),
-    //             Err(e) => Err(Error::new(ErrorKind::InvalidData, format!("{e:?}"))),
-    //         }
-    //     })
-    // }
 }

@@ -1,4 +1,4 @@
-use crate::endian::Endian;
+use crate::tiff::Endian;
 use std::fmt::Display;
 
 mod photometrics;

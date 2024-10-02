@@ -1,5 +1,4 @@
 pub mod cog;
-mod endian;
 mod geotags;
 mod io;
 mod raster;
