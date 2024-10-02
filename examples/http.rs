@@ -13,7 +13,7 @@ const PREVIEW_MEGAPIXELS: f64 = 1.0;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    println!("Example: cloudtiff + Async HTTP");
+    println!("Example: cloudtiff async http");
 
     handler().await;
 }

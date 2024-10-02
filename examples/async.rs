@@ -16,7 +16,7 @@ const PREVIEW_MEGAPIXELS: f64 = 1.0;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() {
-    println!("Example: async");
+    println!("Example: cloudtiff async file");
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG) // Set the maximum log level

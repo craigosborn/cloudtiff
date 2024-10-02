@@ -12,7 +12,7 @@ const OUTPUT_FILE: &str = "data/filesystem.jpg";
 const PREVIEW_MEGAPIXELS: f64 = 1.0;
 
 fn main() {
-    println!("Example: cloudtiff + filesystem");
+    println!("Example: cloudtiff file");
 
     // File access
     println!("Opening `{SAMPLE_COG}`");

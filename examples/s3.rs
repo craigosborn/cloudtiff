@@ -19,10 +19,7 @@ const PREVIEW_MEGAPIXELS: f64 = 1.0;
 
 #[tokio::main]
 async fn main() {
-    println!("Example: cloudtiff + Async HTTP");
-
-    // Load AWS Credentials
-    let sdk_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+    println!("Example: cloudtiff async s3");
 
     // Ask to use AWS credentials
     let consent: &str = "ok";
@@ -36,6 +33,7 @@ async fn main() {
     }
 
     // Configure S3 Reader
+    let sdk_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
     let config = Config::new(&sdk_config)
         .to_builder()
         .region(Some(Region::from_static("us-west-2")))

@@ -11,7 +11,7 @@ const OUTPUT_FILE: &str = "data/demo.jpg";
 const PREVIEW_MEGAPIXELS: f64 = 1.0;
 
 fn main() {
-    println!("Example: demo");
+    println!("Example: cloudtiff demo");
 
     let file = File::open(SAMPLE_COG).unwrap();
     save_preview(file);
