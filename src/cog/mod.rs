@@ -6,8 +6,8 @@ use std::io::{BufReader, Read, Seek};
 mod compression;
 mod error;
 mod level;
-pub mod projection;
-pub mod render;
+mod projection;
+mod render;
 
 pub use error::{CloudTiffError, CloudTiffResult};
 pub use level::Level;
@@ -18,65 +18,6 @@ pub use projection::Projection;
 pub struct CloudTiff {
     levels: Vec<Level>,
     projection: Projection,
-}
-
-#[cfg(feature = "async")]
-use {
-    crate::io::AsyncReadRange,
-    std::io::{Cursor, ErrorKind},
-    tokio::io::{AsyncRead, AsyncReadExt},
-};
-
-#[cfg(feature = "async")]
-impl CloudTiff {
-    pub async fn open_from_async_range_reader<R: AsyncReadRange>(
-        source: &R,
-    ) -> CloudTiffResult<Self> {
-        let fetch_size = 4096;
-        let mut result = Err(CloudTiffError::TODO);
-        let mut buffer = Vec::with_capacity(fetch_size);
-        for _i in 0..10 {
-            let mut bytes = vec![0; fetch_size];
-            let start = buffer.len();
-            // let end = start + bytes.len();
-            let n = source.read_range_async(start as u64, &mut bytes).await?;
-            buffer.extend_from_slice(&bytes[..n]);
-
-            let mut cursor = Cursor::new(&buffer);
-            result = Self::open(&mut cursor);
-            if let Err(CloudTiffError::ReadError(e)) = &result {
-                if matches!(e.kind(), ErrorKind::UnexpectedEof) {
-                    continue;
-                }
-            }
-            break;
-        }
-        result
-    }
-
-    pub async fn open_async<R: AsyncRead + Unpin>(source: &mut R) -> CloudTiffResult<Self> {
-        let fetch_size = 4096;
-        let mut result = Err(CloudTiffError::TODO);
-        let mut buffer = Vec::with_capacity(fetch_size);
-        for _i in 0..10 {
-            let mut bytes = vec![0; fetch_size];
-            let n = source.read(&mut bytes).await?;
-            if n == 0 {
-                break;
-            }
-            buffer.extend_from_slice(&bytes[..n]);
-
-            let mut cursor = Cursor::new(&buffer);
-            result = Self::open(&mut cursor);
-            if let Err(CloudTiffError::ReadError(e)) = &result {
-                if matches!(e.kind(), ErrorKind::UnexpectedEof) {
-                    continue;
-                }
-            }
-            break;
-        }
-        result
-    }
 }
 
 impl CloudTiff {
@@ -191,4 +132,64 @@ pub fn disect<R: Read + Seek>(stream: &mut R) -> Result<(), CloudTiffError> {
     println!("{geo}");
 
     Ok(())
+}
+
+#[cfg(feature = "async")]
+mod not_sync {
+    use {
+        super::*,
+        crate::AsyncReadRange,
+        std::io::{Cursor, ErrorKind},
+        tokio::io::{AsyncRead, AsyncReadExt},
+    };
+    impl CloudTiff {
+        pub async fn open_from_async_range_reader<R: AsyncReadRange>(
+            source: &R,
+        ) -> CloudTiffResult<Self> {
+            let fetch_size = 4096;
+            let mut result = Err(CloudTiffError::TODO);
+            let mut buffer = Vec::with_capacity(fetch_size);
+            for _i in 0..10 {
+                let mut bytes = vec![0; fetch_size];
+                let start = buffer.len();
+                // let end = start + bytes.len();
+                let n = source.read_range_async(start as u64, &mut bytes).await?;
+                buffer.extend_from_slice(&bytes[..n]);
+
+                let mut cursor = Cursor::new(&buffer);
+                result = Self::open(&mut cursor);
+                if let Err(CloudTiffError::ReadError(e)) = &result {
+                    if matches!(e.kind(), ErrorKind::UnexpectedEof) {
+                        continue;
+                    }
+                }
+                break;
+            }
+            result
+        }
+
+        pub async fn open_async<R: AsyncRead + Unpin>(source: &mut R) -> CloudTiffResult<Self> {
+            let fetch_size = 4096;
+            let mut result = Err(CloudTiffError::TODO);
+            let mut buffer = Vec::with_capacity(fetch_size);
+            for _i in 0..10 {
+                let mut bytes = vec![0; fetch_size];
+                let n = source.read(&mut bytes).await?;
+                if n == 0 {
+                    break;
+                }
+                buffer.extend_from_slice(&bytes[..n]);
+
+                let mut cursor = Cursor::new(&buffer);
+                result = Self::open(&mut cursor);
+                if let Err(CloudTiffError::ReadError(e)) = &result {
+                    if matches!(e.kind(), ErrorKind::UnexpectedEof) {
+                        continue;
+                    }
+                }
+                break;
+            }
+            result
+        }
+    }
 }

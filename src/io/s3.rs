@@ -3,9 +3,9 @@
 use super::AsyncReadRange;
 use aws_sdk_s3::{self, operation::get_object::builders::GetObjectFluentBuilder, Client};
 use futures::future::BoxFuture;
+use std::fmt;
 use std::io::{Error, ErrorKind, Result};
 
-#[derive(Clone, Debug)]
 pub struct S3Reader {
     request: GetObjectFluentBuilder,
 }
@@ -15,8 +15,18 @@ impl S3Reader {
         let request = client.get_object().bucket(bucket).key(key);
         Self { request }
     }
+
     pub fn from_request_builder(request: GetObjectFluentBuilder) -> Self {
         Self { request }
+    }
+}
+
+impl fmt::Debug for S3Reader {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("S3Reader")
+            .field("bucket", &self.request.get_bucket().as_ref())
+            .field("key", &self.request.get_key().as_ref())
+            .finish()
     }
 }
 

@@ -22,7 +22,7 @@ async fn handler() {
     // COG
     let t_cog = Instant::now();
     let mut http_reader = HttpReader::new(URL).unwrap();
-    let cog = CloudTiff::open_from_async_range_reader(&mut http_reader)
+    let cog = CloudTiff::open_async(&mut http_reader)
         .await
         .unwrap();
     println!("Indexed COG in {}ms", t_cog.elapsed().as_millis());
