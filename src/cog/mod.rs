@@ -11,8 +11,9 @@ mod render;
 
 pub use error::{CloudTiffError, CloudTiffResult};
 pub use level::Level;
-pub use projection::primatives::{Interval, Point2D, Region, UnitFloat};
-pub use projection::Projection;
+pub use projection::primatives::{Point2D, Region, UnitFloat};
+pub use projection::{Projection, ProjectionError};
+pub use compression::{Compression, Predictor};
 
 #[derive(Clone, Debug)]
 pub struct CloudTiff {

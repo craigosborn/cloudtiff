@@ -1,4 +1,4 @@
-use cloudtiff::cog;
+use cloudtiff;
 use std::fs::File;
 use std::io::{BufReader, Seek, SeekFrom};
 
@@ -13,6 +13,6 @@ fn main() {
     let reader = &mut BufReader::new(file);
 
     println!("Diesecting COG:");
-    cog::disect(reader).unwrap();
+    cloudtiff::disect(reader).unwrap();
     reader.seek(SeekFrom::Start(0)).unwrap();
 }
