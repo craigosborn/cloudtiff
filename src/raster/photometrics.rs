@@ -28,10 +28,12 @@ pub enum PhotometricInterpretation {
 #[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, FromPrimitive)]
 #[repr(u16)]
 pub enum SampleFormat {
-    Uint = 1,
-    Int = 2,
-    IEEEFP = 3,
+    Unsigned = 1,
+    Signed = 2,
+    Float = 3,
     Undefined = 4,
+    ComplexInt = 5,
+    ComplexFloat = 6,
 
     #[num_enum(default)]
     Unknown = 0xFFFF,

@@ -1,10 +1,10 @@
 use crate::tiff::Endian;
 use std::fmt::Display;
 
-mod photometrics;
 pub mod image;
+mod photometrics;
 
-pub use photometrics::PhotometricInterpretation;
+pub use photometrics::{PhotometricInterpretation, PlanarConfiguration, SampleFormat};
 
 // TODO
 //  how to deal with odd bit endianness? Have seen it both ways.
@@ -20,8 +20,9 @@ pub struct Raster {
     pub buffer: Vec<u8>,
     pub bits_per_sample: Vec<u16>,
     pub interpretation: PhotometricInterpretation,
+    pub sample_format: Vec<SampleFormat>,
     pub endian: Endian,
-    bits_per_pixel: u32,
+    bits_per_pixel: u32, // calculated from bits_per_sample and cached
 }
 
 impl Raster {
@@ -30,6 +31,7 @@ impl Raster {
         buffer: Vec<u8>,
         bits_per_sample: Vec<u16>,
         interpretation: PhotometricInterpretation,
+        sample_format: Vec<SampleFormat>,
         endian: Endian,
     ) -> Result<Self, RasterError> {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
@@ -46,6 +48,7 @@ impl Raster {
                 buffer,
                 bits_per_sample,
                 interpretation,
+                sample_format,
                 endian,
                 bits_per_pixel,
             })
@@ -56,6 +59,7 @@ impl Raster {
         dimensions: (u32, u32),
         bits_per_sample: Vec<u16>,
         interpretation: PhotometricInterpretation,
+        sample_format: Vec<SampleFormat>,
         endian: Endian,
     ) -> Self {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
@@ -66,6 +70,7 @@ impl Raster {
             buffer,
             bits_per_sample,
             interpretation,
+            sample_format,
             endian,
             bits_per_pixel,
         }
@@ -128,7 +133,7 @@ impl Raster {
         if n > 1 {
             let end_mask =
                 ((0xFF_u16 << (end_col_offset_bytes * 8 - end_col_offset_bits)) & 0xFF_u16) as u8;
-            self.buffer[end - 1] = (self.buffer[end-1] & !end_mask) | (pixel[n-1] & end_mask);
+            self.buffer[end - 1] = (self.buffer[end - 1] & !end_mask) | (pixel[n - 1] & end_mask);
         }
 
         for i in 0..n {
