@@ -57,21 +57,29 @@ impl Encoder {
         self
     }
 
-    pub fn encode<W: Write>(&self, writer: &mut W) -> EncodeResult<()> {
+    pub fn encode<W: Write>(&self, _writer: &mut W) -> EncodeResult<()> {
         let endian = self.endian;
         let full_dims = self.raster.dimensions;
         let bps = self.raster.bits_per_sample.clone();
         let interpretation = self.raster.interpretation;
         let planar = PlanarConfiguration::Chunky;
         let predictor = Predictor::No;
+        let sample_format: Vec<u16> = self.raster.sample_format.iter().map(|v|(*v).into()).collect();
+        let (_epsg, tiepoint, pixel_scale) = match self.projection {
+            Some((epsg,region)) => (epsg,[0.0,0.0,0.0,region.x.min,region.y.min,0.0], [region.x.range() / (full_dims.0 as f64), region.y.range() / (full_dims.1 as f64), 0.0]),
+            None => (4326, [0.0,0.0,0.0,0.0,0.0,0.0], [1.0,1.0,0.0])
+        };
+
+        // TODO calc # of overview levels
+        let overview_levels = 5;
 
         let mut tiff = Tiff::new(endian, self.variant);
 
-        let overview_levels = 5;
+        // Full and Overview IFD tags
         for i in 0..=overview_levels {
             let ifd = if i==0 {tiff.ifds.first_mut().unwrap()} else {tiff.add_ifd()};
 
-            let number_of_tiles = 0;
+            let number_of_tiles = 0; // TODO calc # of tiles
             let tile_offsets = match self.variant {
                 TiffVariant::Normal => TagData::Long(vec![0; number_of_tiles]),
                 TiffVariant::Big => TagData::Long8(vec![0; number_of_tiles]),
@@ -90,11 +98,19 @@ impl Encoder {
             ifd.set_tag(TagId::TileLength, TagData::from_short(self.tile_dimensions.1), endian);
             ifd.set_tag(TagId::TileOffsets, tile_offsets, endian);
             ifd.set_tag(TagId::TileByteCounts, TagData::Long(vec![0; number_of_tiles]), endian);
+            ifd.set_tag(TagId::SampleFormat, TagData::Short(sample_format.clone()), endian);
         }
 
-        // generate levels
-        //   calc number of tiles per level
-        //   add placeholder tile_byte_count and tile_offsets
+        // IFD0 Tags
+        let ifd0 = tiff.ifds.first_mut().unwrap(); // Safe because Tiff::new creates ifd0.
+        ifd0.set_tag(TagId::ModelTiepoint, TagData::Double(tiepoint.to_vec()), endian);
+        ifd0.set_tag(TagId::ModelPixelScale, TagData::Double(pixel_scale.to_vec()), endian);
+
+        // TODO get geokey dir from epsg
+        // GeoTIFF tags
+        // ifd0.set_tag(TagId::GeoKeyDirectory, data, endian);
+        // ifd0.set_tag(TagId::GeoAsciiParams, data, endian);
+        // ifd0.set_tag(TagId::GeoDoubleParams, data, endian);
 
         // calculate tiff header + directory size
         // set tile bytes offsets

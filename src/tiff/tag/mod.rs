@@ -10,8 +10,10 @@ use num_traits::{cast::NumCast, ToPrimitive};
 use std::fmt::Display;
 
 mod id;
+mod data;
 
 pub use id::TagId;
+pub use data::TagData;
 
 #[derive(Clone, Debug)]
 pub struct Tag {
@@ -23,6 +25,16 @@ pub struct Tag {
 }
 
 impl Tag {
+    pub fn new(code: u16, endian: Endian, data: TagData) -> Self {
+        Self {
+            code,
+            datatype: data.tag_type(),
+            count: data.len(),
+            data: data.bytes(endian),
+            endian,
+        }
+    }
+
     pub fn id(&self) -> Option<TagId> {
         TagId::try_from(self.code).ok()
     }

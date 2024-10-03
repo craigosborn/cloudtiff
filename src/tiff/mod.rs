@@ -9,7 +9,7 @@ mod tag;
 pub use endian::Endian;
 pub use error::TiffError;
 pub use ifd::Ifd;
-pub use tag::{Tag, TagId, TagType};
+pub use tag::{Tag, TagId, TagType, TagData};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum TiffVariant {
@@ -40,6 +40,14 @@ pub struct Tiff {
 }
 
 impl Tiff {
+    pub fn new(endian: Endian, variant: TiffVariant) -> Self {
+        Self {
+            endian,
+            variant,
+            ifds: vec![Ifd::new()],
+        }
+    }
+
     pub fn open<R: Read + Seek>(stream: &mut R) -> Result<Self, TiffError> {
         // TIFF Header
         let mut buf = [0; 4];
@@ -80,11 +88,13 @@ impl Tiff {
     }
 
     pub fn ifd0(&self) -> Result<&Ifd, TiffError> {
-        if self.ifds.len() > 0 {
-            Ok(&self.ifds[0])
-        } else {
-            Err(TiffError::NoIfd0)
-        }
+        self.ifds.get(0).ok_or(TiffError::NoIfd0)
+    }
+
+    pub fn add_ifd(&mut self) -> &mut Ifd {
+        self.ifds.push(Ifd::new());
+        let n = self.ifds.len();
+        self.ifds.get_mut(n - 1).unwrap()
     }
 }
 

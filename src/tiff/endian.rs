@@ -1,4 +1,4 @@
-use eio::{FromBytes, ReadExt};
+use eio::{FromBytes, ReadExt, ToBytes};
 use num_traits::{cast::NumCast, ToPrimitive};
 use std::io::{Read, Result};
 use std::mem;
@@ -50,5 +50,16 @@ impl Endian {
             .into_iter()
             .map(|v| T::from(v))
             .collect()
+    }
+
+    pub fn encode<const N: usize, T: ToBytes<N>>(&self, value: T) -> [u8; N] {
+        match self {
+            Endian::Big => value.to_be_bytes(),
+            Endian::Little => value.to_le_bytes(),
+        }
+    }
+
+    pub fn encode_all<const N: usize, T: ToBytes<N> + Copy>(&self, values: &[T]) -> Vec<u8> {
+        values.iter().flat_map(|v| self.encode(*v)).collect()
     }
 }

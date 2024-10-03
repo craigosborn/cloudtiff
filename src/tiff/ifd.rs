@@ -1,12 +1,16 @@
 use num_traits::NumCast;
 
-use super::{Endian, Tag, TagId, TagType, TiffError, TiffVariant};
+use super::{Endian, Tag, TagData, TagId, TagType, TiffError, TiffVariant};
 use std::io::{self, Read, Seek, SeekFrom};
 
 #[derive(Clone, Debug)]
 pub struct Ifd(pub Vec<Tag>);
 
 impl Ifd {
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
     pub fn parse<R: Read + Seek>(
         stream: &mut R,
         offset: u64,
@@ -80,5 +84,21 @@ impl Ifd {
 
     pub fn get_tag_value<T: NumCast + Copy>(&self, id: TagId) -> Result<T, TiffError> {
         self.get_tag(id)?.value().ok_or(TiffError::BadTag(id))
+    }
+
+    pub fn set_tag_by_code(&self, code: u16) -> Option<&Tag> {
+        let Self(tags) = &self;
+        tags.iter().find(|tag| tag.code == code)
+    }
+
+    pub fn set_tag<I: Into<u16>>(&mut self, id: I, data: TagData, endian: Endian) {
+        let code: u16 = id.into();
+        let tag = Tag::new(code, endian, data);
+        let tags = &mut self.0;
+        if let Some(index) = tags.iter().position(|tag| tag.code == code) {
+            tags[index] = tag;
+        } else {
+            tags.push(tag);
+        }
     }
 }
