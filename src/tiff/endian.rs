@@ -1,6 +1,6 @@
 use eio::{FromBytes, ReadExt, ToBytes};
 use num_traits::{cast::NumCast, ToPrimitive};
-use std::io::{Read, Result};
+use std::io::{Read, Result, Write};
 use std::mem;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -61,5 +61,13 @@ impl Endian {
 
     pub fn encode_all<const N: usize, T: ToBytes<N> + Copy>(&self, values: &[T]) -> Vec<u8> {
         values.iter().flat_map(|v| self.encode(*v)).collect()
+    }
+
+    pub fn write<const N: usize, T: ToBytes<N>>(
+        &self,
+        stream: &mut impl Write,
+        value: T,
+    ) -> Result<()> {
+        stream.write_all(&self.encode(value))
     }
 }

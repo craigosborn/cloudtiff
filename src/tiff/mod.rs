@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 use std::fmt::Display;
-use std::io::{self, Read, Seek};
+use std::io::{self, Read, Seek, Write};
 
 mod endian;
 mod error;
@@ -9,7 +10,7 @@ mod tag;
 pub use endian::Endian;
 pub use error::TiffError;
 pub use ifd::Ifd;
-pub use tag::{Tag, TagId, TagType, TagData};
+pub use tag::{Tag, TagData, TagId, TagType};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum TiffVariant {
@@ -24,6 +25,17 @@ impl TiffVariant {
             TiffVariant::Big => endian.read(stream),
         }
     }
+    fn write_offset<W: Write>(
+        &self,
+        endian: Endian,
+        stream: &mut W,
+        offset: u64,
+    ) -> io::Result<()> {
+        match self {
+            TiffVariant::Normal => endian.write(stream, offset as u32),
+            TiffVariant::Big => endian.write(stream, offset),
+        }
+    }
     const fn offset_bytesize(&self) -> usize {
         match self {
             TiffVariant::Normal => 4,
@@ -31,6 +43,8 @@ impl TiffVariant {
         }
     }
 }
+
+pub type TiffOffsets = HashMap<u16, u64>;
 
 #[derive(Clone, Debug)]
 pub struct Tiff {
@@ -95,6 +109,41 @@ impl Tiff {
         self.ifds.push(Ifd::new());
         let n = self.ifds.len();
         self.ifds.get_mut(n - 1).unwrap()
+    }
+
+    pub fn encode<W: Write + Seek>(&self, stream: &mut W) -> Result<Vec<TiffOffsets>, io::Error> {
+        let endian = self.endian;
+        match endian {
+            Endian::Little => stream.write(b"II")?,
+            Endian::Big => stream.write(b"MM")?,
+        };
+
+        match self.variant {
+            TiffVariant::Normal => endian.write(stream, 0x002A_u16)?,
+            TiffVariant::Big => endian.write(stream, 0x002B_u16)?,
+        };
+
+        if self.variant == TiffVariant::Big {
+            // BigTIFFs have 4 extra bytes in the header
+            endian.write(stream, 0x0008_u16)?; // _offset_bytesize
+            endian.write(stream, 0x0000_u16)?;
+        }
+
+        // IFD0 offset
+        if self.variant == TiffVariant::Big {
+            endian.write(stream, 16 as u64)?;
+        } else {
+            endian.write(stream, 8 as u32)?;
+        }
+
+        // IFDs
+        let mut offsets = vec![];
+        for (i, ifd) in self.ifds.iter().enumerate() {
+            let ifd_offsets = ifd.encode(stream, endian, self.variant, i == self.ifds.len() - 1)?;
+            offsets.push(ifd_offsets);
+        }
+
+        Ok(offsets)
     }
 }
 

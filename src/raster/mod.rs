@@ -1,7 +1,8 @@
 use crate::tiff::Endian;
 use std::fmt::Display;
 
-pub mod image;
+mod image;
+mod ops;
 mod photometrics;
 
 pub use photometrics::{PhotometricInterpretation, PlanarConfiguration, SampleFormat};
@@ -12,6 +13,7 @@ pub use photometrics::{PhotometricInterpretation, PlanarConfiguration, SampleFor
 #[derive(Debug)]
 pub enum RasterError {
     BufferSize((usize, (u32, u32), Vec<u16>)),
+    NotSupported(String),
 }
 
 #[derive(Clone, Debug)]

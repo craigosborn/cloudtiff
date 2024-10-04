@@ -16,7 +16,7 @@ A Cloud Optimized GeoTIFF library for Rust
 - [x] Tile extraction and decompression
 - [x] Georeferencing from tags (proj4rs)
 - [x] Tile rerendering (WMTS)
-- [ ] Encoding
+- [x] Encoding
 - [x] Integration with S3 & HTTP
 
 ### Limitations

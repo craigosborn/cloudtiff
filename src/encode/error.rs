@@ -1,4 +1,3 @@
-use crate::cog::ProjectionError;
 use crate::raster::RasterError;
 use std::fmt::Debug;
 use std::io;
@@ -9,7 +8,7 @@ pub type EncodeResult<T> = Result<T, EncodeError>;
 pub enum EncodeError {
     WriteError(io::Error),
     RasterizationError(RasterError),
-    ProjectionError(ProjectionError),
+    UnsupportedProjection(u16, String),
 }
 
 impl From<io::Error> for EncodeError {
@@ -20,11 +19,5 @@ impl From<io::Error> for EncodeError {
 impl From<RasterError> for EncodeError {
     fn from(e: RasterError) -> Self {
         EncodeError::RasterizationError(e)
-    }
-}
-
-impl From<ProjectionError> for EncodeError {
-    fn from(e: ProjectionError) -> Self {
-        EncodeError::ProjectionError(e)
     }
 }

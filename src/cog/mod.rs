@@ -12,7 +12,7 @@ mod render;
 pub use error::{CloudTiffError, CloudTiffResult};
 pub use level::Level;
 pub use projection::primatives::{Point2D, Region, UnitFloat};
-pub use projection::{Projection, ProjectionError};
+pub use projection::Projection;
 pub use compression::{Compression, Predictor};
 
 #[derive(Clone, Debug)]

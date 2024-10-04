@@ -16,15 +16,19 @@ fn main() {
     let tiepoint = (499980.0, 6100020.0, 0.0);
     let pixel_scale = (10.0, 10.0, 10.0);
     let full_dim = (10980, 10980);
-    let encoder = Encoder::from_image(&img).unwrap().with_projection(
-        32609,
-        Region::new(
-            tiepoint.0,
-            tiepoint.1,
-            tiepoint.0 + pixel_scale.0 * full_dim.0 as f64,
-            tiepoint.1 - pixel_scale.1 * full_dim.1 as f64,
-        ),
-    );
+    let encoder = Encoder::from_image(&img)
+        .unwrap()
+        .with_projection(
+            32609,
+            Region::new(
+                tiepoint.0,
+                tiepoint.1,
+                tiepoint.0 + pixel_scale.0 * full_dim.0 as f64,
+                tiepoint.1 - pixel_scale.1 * full_dim.1 as f64,
+            ),
+        )
+        .with_tile_size(512)
+        .with_big_tiff(false);
 
     let mut file = File::create(OUTPUT_COG).unwrap();
     encoder.encode(&mut file).unwrap();

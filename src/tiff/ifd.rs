@@ -1,7 +1,10 @@
 use num_traits::NumCast;
 
-use super::{Endian, Tag, TagData, TagId, TagType, TiffError, TiffVariant};
-use std::io::{self, Read, Seek, SeekFrom};
+use super::{Endian, Tag, TagData, TagId, TagType, TiffError, TiffOffsets, TiffVariant};
+use std::{
+    collections::HashMap,
+    io::{self, Read, Seek, SeekFrom, Write},
+};
 
 #[derive(Clone, Debug)]
 pub struct Ifd(pub Vec<Tag>);
@@ -92,6 +95,7 @@ impl Ifd {
     }
 
     pub fn set_tag<I: Into<u16>>(&mut self, id: I, data: TagData, endian: Endian) {
+        // TODO hashmap tags
         let code: u16 = id.into();
         let tag = Tag::new(code, endian, data);
         let tags = &mut self.0;
@@ -100,5 +104,72 @@ impl Ifd {
         } else {
             tags.push(tag);
         }
+    }
+
+    pub fn encode<W: Write + Seek>(
+        &self,
+        stream: &mut W,
+        endian: Endian,
+        variant: TiffVariant,
+        last_ifd: bool,
+    ) -> Result<TiffOffsets, io::Error> {
+        // IFD header is just the number of tags
+        let tag_count = self.0.len();
+        match variant {
+            TiffVariant::Normal => endian.write(stream, tag_count as u16)?,
+            TiffVariant::Big => endian.write(stream, tag_count as u64)?,
+        };
+
+        // Things to remember
+        let mut offsets = HashMap::new();
+        let mut extra_data = vec![];
+        let offset_size = variant.offset_bytesize();
+        let (header_size, tag_size) = match variant {
+            TiffVariant::Normal => (2, 12),
+            TiffVariant::Big => (8, 20),
+        };
+        let extra_data_offset =
+            stream.stream_position()? + tag_size * tag_count as u64 + offset_size as u64;
+
+        // Write each tag in the IFD
+        for (i, tag) in self.0.iter().enumerate() {
+            endian.write(stream, tag.code as u16)?;
+            endian.write(stream, tag.datatype as u16)?;
+            variant.write_offset(endian, stream, tag.count as u64)?;
+
+            let offset = if tag.data.len() > offset_size {
+                let data_offset = extra_data_offset + extra_data.len() as u64;
+                variant.write_offset(endian, stream, data_offset)?;
+                extra_data.extend_from_slice(&tag.data);
+                data_offset
+            } else {
+                let bytes: Vec<u8> = tag
+                    .data
+                    .clone()
+                    .into_iter()
+                    .chain(vec![0; offset_size].into_iter())
+                    .take(offset_size)
+                    .collect();
+                stream.write_all(&bytes)?;
+                header_size + tag_size * i as u64 + 4 + offset_size as u64
+            };
+
+            offsets.insert(tag.code, offset);
+        }
+
+        if last_ifd {
+            variant.write_offset(endian, stream, 0)?;
+        } else {
+            let current_pos = stream.stream_position()?;
+            variant.write_offset(
+                endian,
+                stream,
+                current_pos + extra_data.len() as u64 + offset_size as u64,
+            )?;
+        }
+
+        stream.write_all(&extra_data)?;
+
+        Ok(offsets)
     }
 }

@@ -1,7 +1,9 @@
+// https://docs.ogc.org/is/19-008r4/19-008r4.html#_requirements_class_geokeydirectorytag
+
 use std::fmt::Display;
 
 use super::{get_geo_tag_values, GeoKeyId, GeoKeyValue, GeoTiffError};
-use crate::tiff::{Ifd, TagId, TagType};
+use crate::tiff::{Endian, Ifd, TagData, TagId, TagType};
 
 #[derive(Clone, Debug)]
 pub struct GeoKeyDirectory {
@@ -24,6 +26,14 @@ impl GeoKey {
 }
 
 impl GeoKeyDirectory {
+    pub fn new() -> Self {
+        Self {
+            version: 1,
+            revision: (1, 0),
+            keys: vec![],
+        }
+    }
+
     pub fn parse(ifd: &Ifd) -> Result<Self, GeoTiffError> {
         // Directory is a tiff tag
         let directory_values = get_geo_tag_values(ifd, TagId::GeoKeyDirectory)?;
@@ -63,7 +73,10 @@ impl GeoKeyDirectory {
                     tag.and_then(|tag| match tag.datatype {
                         TagType::Ascii => tag.try_to_string().map(|s| {
                             GeoKeyValue::Ascii(
-                                s.trim_end_matches(|c| c == '|' || c == '\0').to_string(),
+                                s[start..end]
+                                    .to_string()
+                                    .trim_end_matches(|c| c == '|' || c == '\0')
+                                    .to_string(),
                             )
                         }),
                         TagType::Short => tag
@@ -86,6 +99,76 @@ impl GeoKeyDirectory {
             revision: (revision, minor_revision),
             keys,
         })
+    }
+
+    pub fn add_to_ifd(&self, ifd: &mut Ifd, endian: Endian) {
+        let (key_directory, ascii_params, double_params) = self.unparse();
+        ifd.set_tag(
+            TagId::GeoKeyDirectory,
+            TagData::Short(key_directory),
+            endian,
+        );
+        if ascii_params.len() > 0 {
+            ifd.set_tag(TagId::GeoAsciiParams, TagData::Ascii(ascii_params), endian);
+        }
+        if double_params.len() > 0 {
+            ifd.set_tag(
+                TagId::GeoDoubleParams,
+                TagData::Double(double_params),
+                endian,
+            );
+        }
+    }
+
+    pub fn unparse(&self) -> (Vec<u16>, Vec<u8>, Vec<f64>) {
+        let mut directory = vec![];
+        let mut shorts = vec![];
+        let mut asciis = vec![];
+        let mut doubles = vec![];
+        let dir_size = 4 * (self.keys.len() + 1) as u16;
+
+        // Directory header
+        directory.push(self.version);
+        directory.push(self.revision.0);
+        directory.push(self.revision.1);
+        directory.push(self.keys.len() as u16);
+
+        // Keys
+        for key in &self.keys {
+            directory.push(key.code);
+
+            match &key.value {
+                GeoKeyValue::Short(vec) => match vec.len() {
+                    0 => directory.extend([0, 0, 0]),
+                    1 => {
+                        directory.push(0);
+                        directory.push(1);
+                        directory.push(vec[0]);
+                    }
+                    n => {
+                        directory.push(TagId::GeoKeyDirectory as u16);
+                        directory.push(n as u16);
+                        directory.push(dir_size + shorts.len() as u16);
+                        shorts.extend(vec);
+                    }
+                },
+                GeoKeyValue::Ascii(s) => {
+                    directory.push(TagId::GeoAsciiParams as u16);
+                    directory.push(s.len() as u16);
+                    directory.push(asciis.len() as u16);
+                    asciis.extend(s.bytes());
+                }
+                GeoKeyValue::Double(vec) => {
+                    directory.push(TagId::GeoDoubleParams as u16);
+                    directory.push(vec.len() as u16);
+                    directory.push(doubles.len() as u16);
+                    doubles.extend(vec);
+                }
+                GeoKeyValue::Undefined => directory.extend([0, 0, 0]),
+            }
+        }
+
+        ([directory, shorts].concat(), asciis, doubles)
     }
 }
 

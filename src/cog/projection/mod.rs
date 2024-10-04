@@ -1,4 +1,4 @@
-use crate::geotags::{GeoKeyId, GeoTags};
+use crate::geotags::{GeoKeyId, GeoModel, GeoModelScaled, GeoModelTransformed, GeoTags};
 use primatives::Region;
 use proj4rs::errors::Error as Proj4Error;
 use proj4rs::proj::Proj;
@@ -16,6 +16,7 @@ pub enum ProjectionError {
     Proj4Error(Proj4Error),
     InvalidOrigin((f64, f64, f64)),
     InvalidScale((f64, f64, f64)),
+    UnsupportedModelTransformation,
 }
 
 impl From<Proj4Error> for ProjectionError {
@@ -64,19 +65,30 @@ impl Projection {
             _ => 1.0,
         };
 
+        let (tiepoint, pixel_scale) = match geo.model {
+            GeoModel::Transformed(GeoModelTransformed {
+                transformation: _,
+                tiepoint: _,
+            }) => return Err(ProjectionError::UnsupportedModelTransformation), // TODO
+            GeoModel::Scaled(GeoModelScaled {
+                tiepoint,
+                pixel_scale,
+            }) => (tiepoint, pixel_scale),
+        };
+
         let origin = (
-            geo.tiepoint[3] * unit_gain,
-            geo.tiepoint[4] * unit_gain,
-            geo.tiepoint[5] * unit_gain,
+            tiepoint[3] * unit_gain,
+            tiepoint[4] * unit_gain,
+            tiepoint[5] * unit_gain,
         );
         if !origin.0.is_finite() || !origin.1.is_finite() || !origin.2.is_finite() {
             return Err(ProjectionError::InvalidOrigin(origin));
         }
 
         let pixel_scale = (
-            geo.pixel_scale[0] * unit_gain,
-            geo.pixel_scale[1] * unit_gain,
-            geo.pixel_scale[2] * unit_gain,
+            pixel_scale[0] * unit_gain,
+            pixel_scale[1] * unit_gain,
+            pixel_scale[2] * unit_gain,
         );
         if !pixel_scale.0.is_normal() || !pixel_scale.1.is_normal() {
             return Err(ProjectionError::InvalidScale(pixel_scale));

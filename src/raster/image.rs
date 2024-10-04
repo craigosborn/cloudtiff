@@ -68,16 +68,16 @@ impl Raster {
         };
 
         let (interpretation, bits_per_sample, sample_format) = match img {
-            DynamicImage::ImageLuma16(_) => (Style::Unknown, vec![16], vec![SampleFormat::Unsigned]),
-            DynamicImage::ImageLuma8(_) => (Style::Unknown, vec![8], vec![SampleFormat::Unsigned]),
-            DynamicImage::ImageLumaA8(_) => (Style::Unknown, vec![8, 8], vec![SampleFormat::Unsigned; 2]),
-            DynamicImage::ImageRgb8(_) => (Style::Unknown, vec![8, 8, 8], vec![SampleFormat::Unsigned; 3]),
-            DynamicImage::ImageRgba8(_) => (Style::Unknown, vec![8, 8, 8, 8], vec![SampleFormat::Unsigned; 4]),
-            DynamicImage::ImageLumaA16(_) => (Style::Unknown, vec![16, 16], vec![SampleFormat::Unsigned; 2]),
-            DynamicImage::ImageRgb16(_) => (Style::Unknown, vec![16, 16, 16], vec![SampleFormat::Unsigned; 3]),
-            DynamicImage::ImageRgba16(_) => (Style::Unknown, vec![16, 16, 16, 16], vec![SampleFormat::Unsigned; 4]),
-            DynamicImage::ImageRgb32F(_) => (Style::Unknown, vec![32, 32, 32], vec![SampleFormat::Float; 3]),
-            DynamicImage::ImageRgba32F(_) => (Style::Unknown, vec![32, 32, 32, 32], vec![SampleFormat::Float; 4]),
+            DynamicImage::ImageLuma16(_) => (Style::BlackIsZero, vec![16], vec![SampleFormat::Unsigned]),
+            DynamicImage::ImageLuma8(_) => (Style::BlackIsZero, vec![8], vec![SampleFormat::Unsigned]),
+            DynamicImage::ImageLumaA8(_) => (Style::BlackIsZero, vec![8, 8], vec![SampleFormat::Unsigned; 2]),
+            DynamicImage::ImageRgb8(_) => (Style::RGB, vec![8, 8, 8], vec![SampleFormat::Unsigned; 3]),
+            DynamicImage::ImageRgba8(_) => (Style::RGB, vec![8, 8, 8, 8], vec![SampleFormat::Unsigned; 4]),
+            DynamicImage::ImageLumaA16(_) => (Style::BlackIsZero, vec![16, 16], vec![SampleFormat::Unsigned; 2]),
+            DynamicImage::ImageRgb16(_) => (Style::RGB, vec![16, 16, 16], vec![SampleFormat::Unsigned; 3]),
+            DynamicImage::ImageRgba16(_) => (Style::RGB, vec![16, 16, 16, 16], vec![SampleFormat::Unsigned; 4]),
+            DynamicImage::ImageRgb32F(_) => (Style::RGB, vec![32, 32, 32], vec![SampleFormat::Float; 3]),
+            DynamicImage::ImageRgba32F(_) => (Style::RGB, vec![32, 32, 32, 32], vec![SampleFormat::Float; 4]),
             _ => (Style::Unknown, vec![8], vec![SampleFormat::Unsigned]),
         };
 
