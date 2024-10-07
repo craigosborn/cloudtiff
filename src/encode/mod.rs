@@ -156,7 +156,7 @@ impl Encoder {
         let overview_levels = ((full_dims.0 as f32 / self.tile_dimensions.0 as f32)
             .log2()
             .min((full_dims.1 as f32 / self.tile_dimensions.1 as f32).log2())
-            .floor()) as usize;
+            .ceil()) as usize;
 
         // Full and Overview IFD tags
         for i in 0..=overview_levels {
