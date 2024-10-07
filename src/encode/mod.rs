@@ -233,11 +233,6 @@ impl Encoder {
                 endian,
             );
 
-            if i==0 {
-                ifd.set_tag(TagId::GDALMetadata, TagData::Ascii(r#"<GDALMetadata>\n  <Item name="OVR_RESAMPLING_ALG">AVERAGE</Item>\n</GDALMetadata>\n"#.into()), endian);
-            }
-            ifd.set_tag(TagId::GDALNoData, TagData::Ascii("0".into()), endian);
-
             ifd.0.sort_by(|a, b| a.code.cmp(&b.code)); // TIFF Tags should be sorted
         }
 

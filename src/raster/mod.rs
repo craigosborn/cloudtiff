@@ -12,7 +12,7 @@ pub use photometrics::{PhotometricInterpretation, PlanarConfiguration, SampleFor
 
 #[derive(Debug)]
 pub enum RasterError {
-    BufferSize((usize, (u32, u32), Vec<u16>)),
+    BufferSize((usize, (u32, u32), Vec<u16>, u32)),
     NotSupported(String),
 }
 
@@ -37,12 +37,14 @@ impl Raster {
         endian: Endian,
     ) -> Result<Self, RasterError> {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
-        let required_bytes = dimensions.0 * dimensions.1 * bits_per_pixel / 8;
+        let bytes_per_pixel  = bits_per_pixel / 8;
+        let required_bytes = dimensions.0 * dimensions.1 * bytes_per_pixel;
         if buffer.len() != required_bytes as usize {
             Err(RasterError::BufferSize((
                 buffer.len(),
                 dimensions,
                 bits_per_sample,
+                bytes_per_pixel,
             )))
         } else {
             Ok(Self {
