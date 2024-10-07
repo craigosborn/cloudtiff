@@ -172,7 +172,8 @@ impl Encoder {
         let overview_levels = ((full_dims.0 as f32 / self.tile_dimensions.0 as f32)
             .log2()
             .min((full_dims.1 as f32 / self.tile_dimensions.1 as f32).log2())
-            .ceil()) as usize;
+            .floor()) as usize;
+        // TODO more overlay levels
 
         // Full and Overview IFD tags
         for i in 0..=overview_levels {
@@ -273,10 +274,9 @@ impl Encoder {
                         (row + 1) * tile_height as u32,
                     );
                     let tile_raster = img.get_region(region)?;
-                    let tile_bytes = &tile_raster.buffer; // TODO compression and endian
-                    writer.write(tile_bytes)?;
-                    // let tile_bytes = compression.encode(&tile_raster.buffer[..])?;
-                    // writer.write(&tile_bytes)?;
+                    // TODO endian
+                    let tile_bytes = compression.encode(&tile_raster.buffer[..])?;
+                    writer.write(&tile_bytes)?;
                     tile_byte_counts.push(tile_bytes.len() as u32);
                 }
             }

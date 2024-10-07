@@ -27,7 +27,7 @@ fn main() {
                 tiepoint.1 - pixel_scale.1 * full_dim.1 as f64,
             ),
         )
-        .with_tile_size(512)
+        .with_tile_size(256)
         .with_big_tiff(false);
 
     let mut file = File::create(OUTPUT_COG).unwrap();
