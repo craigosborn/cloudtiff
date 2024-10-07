@@ -101,7 +101,7 @@ impl Encoder {
                     GeoKeyValue::Short(vec![4326]),
                 );
                 geo.set_key(
-                    GeoKeyId::GeographicTypeGeoKey,
+                    GeoKeyId::GeogCitationGeoKey,
                     GeoKeyValue::Ascii("WGS 84".into()),
                 );
                 geo.set_key(
