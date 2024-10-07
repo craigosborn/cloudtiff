@@ -1,6 +1,6 @@
 use core::f64;
 use std::fmt;
-use std::ops::Sub;
+use std::ops::{Mul, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct UnitFloat(f64);
@@ -126,6 +126,38 @@ impl<T> Region<T> {
 
     pub fn y(&self) -> &Interval<T> {
         &self.y
+    }
+}
+
+impl Region<f64> {
+    pub fn clamp(self, other: &Self) -> Self {
+        Self::new(
+            self.x.min.max(other.x.min),
+            self.y.min.max(other.y.min),
+            self.x.max.min(other.x.max),
+            self.y.max.min(other.y.max),
+        )
+    }
+    pub fn extend(self, point: &Point2D<f64>) -> Self {
+        Self::new(
+            self.x.min.min(point.x),
+            self.y.min.min(point.y),
+            self.x.max.max(point.x),
+            self.y.max.max(point.y),
+        )
+    }
+}
+
+impl Mul<f64> for Region<f64> {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self::new(
+            self.x.min * rhs,
+            self.y.min * rhs,
+            self.x.max * rhs,
+            self.y.max * rhs,
+        )
     }
 }
 

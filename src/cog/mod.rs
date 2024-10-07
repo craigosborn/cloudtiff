@@ -9,11 +9,12 @@ mod level;
 mod projection;
 mod render;
 
+pub use compression::{Compression, Predictor};
 pub use error::{CloudTiffError, CloudTiffResult};
 pub use level::Level;
 pub use projection::primatives::{Point2D, Region, UnitFloat};
 pub use projection::Projection;
-pub use compression::{Compression, Predictor};
+pub use render::wmts;
 
 #[derive(Clone, Debug)]
 pub struct CloudTiff {
@@ -33,6 +34,10 @@ impl CloudTiff {
         let ifd0 = tiff.ifd0()?;
         let geo_tags = GeoTags::parse(ifd0)?;
 
+        Self::from_tiff_and_geo(tiff, geo_tags)
+    }
+
+    pub fn from_tiff_and_geo(tiff: Tiff, geo: GeoTags) -> CloudTiffResult<Self> {
         // Map IFDs into COG Levels
         //   Note this skips over any ifds which aren't valid COG levels
         //   TODO check that all levels have the same shape
@@ -45,18 +50,28 @@ impl CloudTiff {
         // Validate levels
         //   COGs should already have levels sorted big to small
         levels.sort_by(|a, b| (b.megapixels()).total_cmp(&a.megapixels()));
+        for (i, level) in levels.iter_mut().enumerate() {
+            level.overview = Some(i);
+        }
         if levels.len() == 0 {
             return Err(CloudTiffError::NoLevels);
         }
 
         // Projection georeferences any level
-        let projection = Projection::from_geo_tags(&geo_tags, levels[0].dimensions)?;
+        let projection = Projection::from_geo_tags(&geo, levels[0].dimensions)?;
 
         Ok(Self { levels, projection })
     }
 
     pub fn bounds_lat_lon_deg(&self) -> CloudTiffResult<Region<f64>> {
         Ok(self.projection.bounds_lat_lon_deg()?)
+    }
+
+    pub fn bounds_wmts(&self, tile_dim: (u32, u32)) -> CloudTiffResult<(Region<f64>, (u32, u32))> {
+        let (bounds, (min_z, max_z)) =
+            wmts::bounds_wmts(self.bounds_lat_lon_deg()?, self.full_dimensions(), tile_dim);
+
+        Ok((bounds, (min_z, max_z)))
     }
 
     pub fn full_dimensions(&self) -> (u32, u32) {
@@ -131,6 +146,10 @@ pub fn disect<R: Read + Seek>(stream: &mut R) -> Result<(), CloudTiffError> {
 
     let geo = GeoTags::parse(tiff.ifd0()?)?;
     println!("{geo}");
+
+    let cog = CloudTiff::from_tiff_and_geo(tiff,geo)?;
+    println!("{cog}");
+    println!("{:?}", cog.bounds_lat_lon_deg()?);
 
     Ok(())
 }

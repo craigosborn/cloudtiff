@@ -3,7 +3,25 @@
 use super::{photometrics::PhotometricInterpretation as Style, RasterError, SampleFormat};
 use crate::raster::Raster;
 use crate::tiff::Endian;
-use image::{DynamicImage, ImageBuffer};
+use image::{DynamicImage, ImageBuffer, Rgba};
+
+impl Raster {
+    pub fn get_pixel_rgba(&self, x: u32, y: u32) -> Option<Rgba<u8>> {
+        let p = self.get_pixel(x, y)?;
+        Some(match self.bits_per_sample.as_slice() {
+            [8] => Rgba([p[0], p[0], p[0], 255]),
+            [8, 8] => Rgba([p[0], p[0], p[0], p[1]]),
+            [8, 8, 8] => Rgba([p[0], p[1], p[2], 255]),
+            [8, 8, 8, 8] => Rgba([p[0], p[1], p[2], p[3]]),
+            [16] => {
+                let v: i16 = self.endian.decode([p[0], p[1]]).ok()?;
+                let v8 = (v/10).clamp(0, 255) as u8;
+                Rgba([v8, v8, v8, 255])
+            }
+            _ => return None,
+        })
+    }
+}
 
 impl TryInto<DynamicImage> for Raster {
     type Error = String;
@@ -68,19 +86,58 @@ impl Raster {
         };
 
         let (interpretation, bits_per_sample, sample_format) = match img {
-            DynamicImage::ImageLuma16(_) => (Style::BlackIsZero, vec![16], vec![SampleFormat::Unsigned]),
-            DynamicImage::ImageLuma8(_) => (Style::BlackIsZero, vec![8], vec![SampleFormat::Unsigned]),
-            DynamicImage::ImageLumaA8(_) => (Style::BlackIsZero, vec![8, 8], vec![SampleFormat::Unsigned; 2]),
-            DynamicImage::ImageRgb8(_) => (Style::RGB, vec![8, 8, 8], vec![SampleFormat::Unsigned; 3]),
-            DynamicImage::ImageRgba8(_) => (Style::RGB, vec![8, 8, 8, 8], vec![SampleFormat::Unsigned; 4]),
-            DynamicImage::ImageLumaA16(_) => (Style::BlackIsZero, vec![16, 16], vec![SampleFormat::Unsigned; 2]),
-            DynamicImage::ImageRgb16(_) => (Style::RGB, vec![16, 16, 16], vec![SampleFormat::Unsigned; 3]),
-            DynamicImage::ImageRgba16(_) => (Style::RGB, vec![16, 16, 16, 16], vec![SampleFormat::Unsigned; 4]),
-            DynamicImage::ImageRgb32F(_) => (Style::RGB, vec![32, 32, 32], vec![SampleFormat::Float; 3]),
-            DynamicImage::ImageRgba32F(_) => (Style::RGB, vec![32, 32, 32, 32], vec![SampleFormat::Float; 4]),
+            DynamicImage::ImageLuma16(_) => {
+                (Style::BlackIsZero, vec![16], vec![SampleFormat::Unsigned])
+            }
+            DynamicImage::ImageLuma8(_) => {
+                (Style::BlackIsZero, vec![8], vec![SampleFormat::Unsigned])
+            }
+            DynamicImage::ImageLumaA8(_) => (
+                Style::BlackIsZero,
+                vec![8, 8],
+                vec![SampleFormat::Unsigned; 2],
+            ),
+            DynamicImage::ImageRgb8(_) => {
+                (Style::RGB, vec![8, 8, 8], vec![SampleFormat::Unsigned; 3])
+            }
+            DynamicImage::ImageRgba8(_) => (
+                Style::RGB,
+                vec![8, 8, 8, 8],
+                vec![SampleFormat::Unsigned; 4],
+            ),
+            DynamicImage::ImageLumaA16(_) => (
+                Style::BlackIsZero,
+                vec![16, 16],
+                vec![SampleFormat::Unsigned; 2],
+            ),
+            DynamicImage::ImageRgb16(_) => (
+                Style::RGB,
+                vec![16, 16, 16],
+                vec![SampleFormat::Unsigned; 3],
+            ),
+            DynamicImage::ImageRgba16(_) => (
+                Style::RGB,
+                vec![16, 16, 16, 16],
+                vec![SampleFormat::Unsigned; 4],
+            ),
+            DynamicImage::ImageRgb32F(_) => {
+                (Style::RGB, vec![32, 32, 32], vec![SampleFormat::Float; 3])
+            }
+            DynamicImage::ImageRgba32F(_) => (
+                Style::RGB,
+                vec![32, 32, 32, 32],
+                vec![SampleFormat::Float; 4],
+            ),
             _ => (Style::Unknown, vec![8], vec![SampleFormat::Unsigned]),
         };
 
-        Self::new(dimensions, buffer, bits_per_sample, interpretation, sample_format, endian)
+        Self::new(
+            dimensions,
+            buffer,
+            bits_per_sample,
+            interpretation,
+            sample_format,
+            endian,
+        )
     }
 }

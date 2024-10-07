@@ -7,6 +7,7 @@ use std::fmt::Display;
 
 #[derive(Clone, Debug)]
 pub struct Level {
+    pub overview: Option<usize>,
     pub dimensions: (u32, u32),
     pub tile_width: u32,
     pub tile_height: u32,
@@ -55,6 +56,7 @@ impl Level {
         }
 
         Ok(Self {
+            overview: None,
             dimensions: (width, height),
             tile_width,
             tile_height,

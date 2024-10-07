@@ -15,6 +15,7 @@ pub enum CloudTiffError {
     BadGeoTiff(GeoTiffError),
     TileLevelOutOfRange((usize, usize)),
     TileIndexOutOfRange((usize, usize)),
+    BadWmtsTileIndex((u32,u32,u32)),
     ImageCoordOutOfRange((f64, f64)),
     ReadError(io::Error),
     DecompresionError(DecompressError),
@@ -24,6 +25,8 @@ pub enum CloudTiffError {
     RegionOutOfBounds(((f64, f64, f64, f64), (f64, f64, f64, f64))),
     ReadRangeError(String),
     MutexError(String),
+    NotSupported(String),
+    BadPath(String),
     TODO,
     #[cfg(feature = "async")]
     AsyncJoinError(tokio::task::JoinError),

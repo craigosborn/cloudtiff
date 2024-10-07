@@ -1,7 +1,7 @@
 use cloudtiff;
 use std::env;
 use std::fs::File;
-use std::io::{BufReader, Seek, SeekFrom};
+use std::io::BufReader;
 
 const SAMPLE_COG: &str = "data/sample.tif";
 
@@ -18,5 +18,5 @@ fn main() {
 
     println!("Diesecting COG:");
     cloudtiff::disect(reader).unwrap();
-    reader.seek(SeekFrom::Start(0)).unwrap();
+
 }

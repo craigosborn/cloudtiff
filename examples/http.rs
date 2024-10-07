@@ -11,7 +11,7 @@ const OUTPUT_FILE: &str = "data/http.jpg";
 const PREVIEW_MEGAPIXELS: f64 = 1.0;
 
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() {
     println!("Example: cloudtiff async http");
 

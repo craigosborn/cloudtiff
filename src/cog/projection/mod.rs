@@ -1,5 +1,5 @@
 use crate::geotags::{GeoKeyId, GeoModel, GeoModelScaled, GeoModelTransformed, GeoTags};
-use primatives::Region;
+use primatives::{Point2D, Region};
 use proj4rs::errors::Error as Proj4Error;
 use proj4rs::proj::Proj;
 use proj4rs::transform::transform;
@@ -193,7 +193,7 @@ impl Projection {
     }
 
     pub fn bounds_lat_lon_deg(&self) -> Result<Region<f64>, ProjectionError> {
-        let radians = self.bounds(4326)?;
+        let radians = self.bounds(4326);
         Ok(Region::new(
             radians.x.min.to_degrees(),
             radians.y.min.to_degrees(),
@@ -202,10 +202,25 @@ impl Projection {
         ))
     }
 
-    pub fn bounds(&self, epsg: u16) -> Result<Region<f64>, ProjectionError> {
-        let (left, top, _) = self.transform_into(0.0, 0.0, 0.0, epsg)?;
-        let (right, bottom, _) = self.transform_into(1.0, 1.0, 0.0, epsg)?;
-        Ok(Region::new(left, bottom, right, top))
+    pub fn bounds(&self, epsg: u16) -> Region<f64> {
+        vec![
+            [0.0, 0.0],
+            [0.5, 0.0],
+            [1.0, 0.0],
+            [1.0, 0.5],
+            [1.0, 1.0],
+            [0.5, 1.0],
+            [0.0, 1.0],
+            [0.0, 0.5],
+        ]
+        .into_iter()
+        .fold(Region::new(f64::MAX,f64::MAX,f64::MIN,f64::MIN), |region, [u, v]| {
+            if let Ok((x, y, _)) = self.transform_into(u, v, 0.0, epsg) {
+                region.extend(&Point2D{x,y})
+            } else {
+                region
+            }
+        })
     }
 
     pub fn bounds_in_proj(&self, proj: &Proj) -> Result<Region<f64>, ProjectionError> {

@@ -30,7 +30,7 @@ impl Encoder {
             endian: Endian::Little,
             variant: TiffVariant::Big,
             compression: Compression::Uncompressed,
-            tile_dimensions: (1024, 1024),
+            tile_dimensions: (512, 512),
         })
     }
 
@@ -39,8 +39,8 @@ impl Encoder {
         self
     }
 
-    pub fn with_tile_size(mut self, pixels: u16) -> Self {
-        self.tile_dimensions = (pixels, pixels);
+    pub fn with_tile_size(mut self, size: u16) -> Self {
+        self.tile_dimensions = (size, size);
         self
     }
 
@@ -162,8 +162,9 @@ impl Encoder {
         for i in 0..=overview_levels {
             let width = full_dims.0 / 2_u32.pow(i as u32);
             let height = full_dims.1 / 2_u32.pow(i as u32);
-            let tile_cols = (width as f32 / self.tile_dimensions.0 as f32).ceil() as usize;
-            let tile_rows = (height as f32 / self.tile_dimensions.1 as f32).ceil() as usize;
+            let (tile_width, tile_height) = self.tile_dimensions;
+            let tile_cols = (width as f32 / tile_width as f32).ceil() as usize;
+            let tile_rows = (height as f32 / tile_height as f32).ceil() as usize;
             let number_of_tiles = tile_cols * tile_rows;
             let tile_offsets = match self.variant {
                 TiffVariant::Normal => TagData::Long(vec![0; number_of_tiles]),
@@ -212,12 +213,12 @@ impl Encoder {
             );
             ifd.set_tag(
                 TagId::TileWidth,
-                TagData::from_short(self.tile_dimensions.0),
+                TagData::from_short(tile_width),
                 endian,
             );
             ifd.set_tag(
                 TagId::TileLength,
-                TagData::from_short(self.tile_dimensions.1),
+                TagData::from_short(tile_height),
                 endian,
             );
             ifd.set_tag(TagId::TileOffsets, tile_offsets, endian);
@@ -232,6 +233,11 @@ impl Encoder {
                 endian,
             );
 
+            if i==0 {
+                ifd.set_tag(TagId::GDALMetadata, TagData::Ascii(r#"<GDALMetadata>\n  <Item name="OVR_RESAMPLING_ALG">AVERAGE</Item>\n</GDALMetadata>\n"#.into()), endian);
+            }
+            ifd.set_tag(TagId::GDALNoData, TagData::Ascii("0".into()), endian);
+
             ifd.0.sort_by(|a, b| a.code.cmp(&b.code)); // TIFF Tags should be sorted
         }
 
@@ -239,17 +245,16 @@ impl Encoder {
         let offsets = tiff.encode(writer)?;
 
         // Encode tiles
-        let tile_width = self.tile_dimensions.0 as u32;
-        let tile_height = self.tile_dimensions.1 as u32;
         let mut ifd_tile_offsets = vec![vec![]; overview_levels + 1];
         let mut ifd_tile_bytes = vec![vec![]; overview_levels + 1];
+        let (tile_width, tile_height) = self.tile_dimensions;
         for i in (0..=overview_levels).rev() {
             let mut tile_offsets = vec![];
             let mut tile_byte_counts = vec![];
             let width = full_dims.0 / 2_u32.pow(i as u32);
             let height = full_dims.1 / 2_u32.pow(i as u32);
-            let tile_cols = (width as f32 / self.tile_dimensions.0 as f32).ceil() as u32;
-            let tile_rows = (height as f32 / self.tile_dimensions.1 as f32).ceil() as u32;
+            let tile_cols = (width as f32 / tile_width as f32).ceil() as u32;
+            let tile_rows = (height as f32 / tile_height as f32).ceil() as u32;
             let img = if i > 0 {
                 &self.raster.resize(width, height)?
             } else {
@@ -259,10 +264,10 @@ impl Encoder {
                 for col in 0..tile_cols {
                     tile_offsets.push(writer.stream_position()?);
                     let region = Region::new(
-                        col * tile_width,
-                        row * tile_height,
-                        (col + 1) * tile_width,
-                        (row + 1) * tile_height,
+                        col * tile_width as u32,
+                        row * tile_height as u32,
+                        (col + 1) * tile_width as u32,
+                        (row + 1) * tile_height as u32,
                     );
                     let tile_raster = img.get_region(region)?;
                     let tile_bytes = &tile_raster.buffer; // TODO compression and endian

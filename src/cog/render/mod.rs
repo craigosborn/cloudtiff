@@ -4,6 +4,8 @@ use crate::io::ReadRange;
 use std::io::{Read, Seek};
 use std::sync::Mutex;
 
+use super::CloudTiffError;
+
 #[cfg(feature = "async")]
 use {
     crate::io::AsyncReadRange,
@@ -15,6 +17,7 @@ use {
 mod renderer;
 mod tiles;
 mod util;
+pub mod wmts;
 
 pub struct ReaderRequired;
 
@@ -46,7 +49,7 @@ impl CloudTiff {
             reader: ReaderRequired,
             input_projection: self.projection.clone(),
             region: RenderRegion::InputCrop(Region::unit()),
-            resolution: (1024, 1024),
+            resolution: self.full_dimensions(),
         }
     }
 }
@@ -129,6 +132,18 @@ impl<'a, S> RenderBuilder<'a, S> {
     pub fn of_crop(mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Self {
         self.region = RenderRegion::InputCrop(Region::new_saturated(min_x, min_y, max_x, max_y));
         self
+    }
+
+    pub fn of_wmts_tile(self, x: u32, y: u32, z: u32) -> CloudTiffResult<Self> {
+        let Some(region) = wmts::tile_bounds_lat_lon_deg(x, y, z) else {
+            return Err(CloudTiffError::BadWmtsTileIndex((x, y, z)));
+        };
+        Ok(self.of_output_region_lat_lon_deg(
+            region.x.min,
+            region.y.min,
+            region.x.max,
+            region.y.max,
+        ))
     }
 
     pub fn of_output_region_lat_lon_deg(

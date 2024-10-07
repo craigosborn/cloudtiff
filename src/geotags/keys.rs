@@ -167,6 +167,9 @@ impl GeoKeyDirectory {
                 GeoKeyValue::Undefined => directory.extend([0, 0, 0]),
             }
         }
+        if asciis.len() > 0 {
+            asciis.push(0); // null terminated string
+        }
 
         ([directory, shorts].concat(), asciis, doubles)
     }
