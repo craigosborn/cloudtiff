@@ -9,7 +9,7 @@ mod level;
 mod projection;
 mod render;
 
-pub use compression::{Compression, Predictor};
+pub use compression::{Compression, Predictor, DecompressError};
 pub use error::{CloudTiffError, CloudTiffResult};
 pub use level::Level;
 pub use projection::primatives::{Point2D, Region, UnitFloat};

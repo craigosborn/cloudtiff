@@ -7,7 +7,7 @@ mod tiff;
 
 pub use cog::{disect, CloudTiff, CloudTiffError};
 pub use cog::{Point2D, Region};
-pub use encode::{EncodeError, Encoder};
+pub use encode::{EncodeError, Encoder, SupportedCompression};
 
 // IO exports
 #[cfg(feature = "http")]

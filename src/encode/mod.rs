@@ -1,5 +1,4 @@
-use crate::cog::Compression;
-use crate::cog::{Predictor, Region};
+use crate::cog::{Compression, Predictor, Region};
 use crate::geotags::{GeoKeyId, GeoKeyValue, GeoTags};
 use crate::raster::{PlanarConfiguration, Raster};
 use crate::tiff::{Endian, TagData, TagId, Tiff, TiffVariant};
@@ -10,13 +9,20 @@ pub mod error;
 
 pub use error::{EncodeError, EncodeResult};
 
+#[derive(Debug, Copy, Clone)]
+pub enum SupportedCompression {
+    Lzw,
+    Deflate,
+    Uncompressed,
+}
+
 #[derive(Debug)]
 pub struct Encoder {
     raster: Raster,
     projection: Option<(u16, Region<f64>)>,
     endian: Endian,
     variant: TiffVariant,
-    compression: Compression,
+    compression: SupportedCompression,
     tile_dimensions: (u16, u16),
     // TODO tiff tags
 }
@@ -29,7 +35,7 @@ impl Encoder {
             projection: None,
             endian: Endian::Little,
             variant: TiffVariant::Big,
-            compression: Compression::Uncompressed,
+            compression: SupportedCompression::Uncompressed,
             tile_dimensions: (512, 512),
         })
     }
@@ -46,6 +52,11 @@ impl Encoder {
 
     pub fn with_big_endian(mut self, big: bool) -> Self {
         self.endian = if big { Endian::Big } else { Endian::Little };
+        self
+    }
+
+    pub fn with_compression(mut self, compression: SupportedCompression) -> Self {
+        self.compression = compression;
         self
     }
 
@@ -71,6 +82,11 @@ impl Encoder {
             .iter()
             .map(|v| (*v).into())
             .collect();
+        let compression = match self.compression {
+            SupportedCompression::Lzw => Compression::Lzw,
+            SupportedCompression::Deflate => Compression::DeflateAdobe,
+            SupportedCompression::Uncompressed => Compression::Uncompressed,
+        };
 
         // TODO is this necessary?
         let (epsg, tiepoint, pixel_scale) = match self.projection {
@@ -188,7 +204,7 @@ impl Encoder {
             ifd.set_tag(TagId::BitsPerSample, TagData::Short(bps.clone()), endian);
             ifd.set_tag(
                 TagId::Compression,
-                TagData::from_short(self.compression.into()),
+                TagData::from_short(compression.into()),
                 endian,
             );
             ifd.set_tag(
@@ -211,16 +227,8 @@ impl Encoder {
                 TagData::from_short(predictor as u16),
                 endian,
             );
-            ifd.set_tag(
-                TagId::TileWidth,
-                TagData::from_short(tile_width),
-                endian,
-            );
-            ifd.set_tag(
-                TagId::TileLength,
-                TagData::from_short(tile_height),
-                endian,
-            );
+            ifd.set_tag(TagId::TileWidth, TagData::from_short(tile_width), endian);
+            ifd.set_tag(TagId::TileLength, TagData::from_short(tile_height), endian);
             ifd.set_tag(TagId::TileOffsets, tile_offsets, endian);
             ifd.set_tag(
                 TagId::TileByteCounts,
@@ -267,6 +275,8 @@ impl Encoder {
                     let tile_raster = img.get_region(region)?;
                     let tile_bytes = &tile_raster.buffer; // TODO compression and endian
                     writer.write(tile_bytes)?;
+                    // let tile_bytes = compression.encode(&tile_raster.buffer[..])?;
+                    // writer.write(&tile_bytes)?;
                     tile_byte_counts.push(tile_bytes.len() as u32);
                 }
             }

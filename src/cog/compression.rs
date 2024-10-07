@@ -5,15 +5,17 @@
 // TODO support jpeg
 // TODO decide on miniz_oxide vs flate2
 
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 // use miniz_oxide::inflate::{self,TINFLStatus};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use salzweg::decoder::{DecodingError, TiffStyleDecoder};
+use salzweg::encoder::{EncodingError, TiffStyleEncoder};
 use flate2;
 
 #[derive(Debug)]
 pub enum DecompressError {
-    LzwError(DecodingError),
+    LzwDecodeError(DecodingError),
+    LzwEncodeError(EncodingError),
     // InflateError(TINFLStatus),
     CompressionNotSupported(Compression),
     PredictorNotSupported(Predictor),
@@ -89,12 +91,28 @@ impl Compression {
         match self {
             Self::Uncompressed => Ok(bytes.to_vec()),
             Self::Lzw => {
-                TiffStyleDecoder::decode_to_vec(bytes).map_err(|e| DecompressError::LzwError(e))
+                TiffStyleDecoder::decode_to_vec(bytes).map_err(|e| DecompressError::LzwDecodeError(e))
             }
             Self::DeflateAdobe => {
                 let mut buf = vec![];
                 flate2::read::ZlibDecoder::new(bytes).read_to_end(&mut buf)?;
                 Ok(buf)
+                // inflate::decompress_to_vec_zlib(bytes).map_err(|e| DecompressError::InflateError(e.status))
+            }
+            other => Err(DecompressError::CompressionNotSupported(*other)),
+        }
+    }
+
+    pub fn encode(&self, bytes: &[u8]) -> Result<Vec<u8>, DecompressError> {
+        match self {
+            Self::Uncompressed => Ok(bytes.to_vec()),
+            Self::Lzw => {
+                TiffStyleEncoder::encode_to_vec(bytes).map_err(|e| DecompressError::LzwEncodeError(e))
+            }
+            Self::DeflateAdobe => {
+                let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+                encoder.write_all(bytes)?;
+                Ok(encoder.finish()?)
                 // inflate::decompress_to_vec_zlib(bytes).map_err(|e| DecompressError::InflateError(e.status))
             }
             other => Err(DecompressError::CompressionNotSupported(*other)),

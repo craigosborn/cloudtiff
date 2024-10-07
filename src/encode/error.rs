@@ -1,6 +1,7 @@
 use crate::raster::RasterError;
 use std::fmt::Debug;
 use std::io;
+use crate::cog::DecompressError;
 
 pub type EncodeResult<T> = Result<T, EncodeError>;
 
@@ -9,6 +10,7 @@ pub enum EncodeError {
     WriteError(io::Error),
     RasterizationError(RasterError),
     UnsupportedProjection(u16, String),
+    CompressionError(DecompressError),
 }
 
 impl From<io::Error> for EncodeError {
@@ -16,8 +18,15 @@ impl From<io::Error> for EncodeError {
         EncodeError::WriteError(e)
     }
 }
+
 impl From<RasterError> for EncodeError {
     fn from(e: RasterError) -> Self {
         EncodeError::RasterizationError(e)
+    }
+}
+
+impl From<DecompressError> for EncodeError {
+    fn from(e: DecompressError) -> Self {
+        EncodeError::CompressionError(e)
     }
 }
