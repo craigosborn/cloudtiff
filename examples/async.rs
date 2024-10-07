@@ -14,7 +14,7 @@ const SAMPLE_COG: &str = "data/sample.tif";
 const OUTPUT_FILE: &str = "data/async.jpg";
 const PREVIEW_MEGAPIXELS: f64 = 1.0;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
+#[tokio::main]
 async fn main() {
     println!("Example: cloudtiff async file");
 
@@ -37,7 +37,6 @@ async fn main() {
         .renderer()
         .with_mp_limit(PREVIEW_MEGAPIXELS)
         .with_async_reader(thread_safe_file)
-        // .with_image_region((0.0,0.0,0.1,0.1))
         .render_async()
         .await
         .unwrap();

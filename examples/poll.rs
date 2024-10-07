@@ -2,7 +2,7 @@ use cloudtiff::{AsyncReadRange, HttpReader};
 use std::time::Instant;
 use tokio::io::AsyncReadExt;
 
-const URL: &str = "https://sentinel-cogs.s3.amazonaws.com/sentinel-s2-l2a-cogs/9/U/WA/2024/8/S2A_9UWA_20240806_0_L2A/TCI.tif";
+const URL: &str = "http://sentinel-cogs.s3.amazonaws.com/sentinel-s2-l2a-cogs/9/U/WA/2024/8/S2A_9UWA_20240806_0_L2A/TCI.tif";
 
 #[tokio::main]
 async fn main() {

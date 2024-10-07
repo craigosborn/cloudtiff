@@ -6,7 +6,7 @@ use image::DynamicImage;
 use std::time::Instant;
 use tokio;
 
-const URL: &str = "https://sentinel-cogs.s3.amazonaws.com/sentinel-s2-l2a-cogs/9/U/WA/2024/8/S2A_9UWA_20240806_0_L2A/TCI.tif";
+const URL: &str = "http://sentinel-cogs.s3.amazonaws.com/sentinel-s2-l2a-cogs/9/U/WA/2024/8/S2A_9UWA_20240806_0_L2A/TCI.tif";
 const OUTPUT_FILE: &str = "data/http.jpg";
 const PREVIEW_MEGAPIXELS: f64 = 1.0;
 

@@ -24,7 +24,7 @@ pub struct Raster {
     pub interpretation: PhotometricInterpretation,
     pub sample_format: Vec<SampleFormat>,
     pub endian: Endian,
-    bits_per_pixel: u32, // calculated from bits_per_sample and cached
+    bits_per_pixel: u32, // cached sum of bits_per_sample
 }
 
 impl Raster {
@@ -145,44 +145,9 @@ impl Raster {
         Ok(())
     }
 
-    // fn bits_per_pixel(&self) -> u16 {
-    //     self.bits_per_sample.iter().sum()
-    // }
-
     fn row_size(&self) -> u32 {
         (self.dimensions.0 * self.bits_per_pixel + 7) / 8
     }
-
-    // fn normalize_rgba(&self) -> Self {
-    //     let rgba = Self::blank(
-    //         self.dimensions,
-    //         vec![8, 8, 8, 8],
-    //         self.interpretation,
-    //         self.endian,
-    //     );
-
-    //     match self.bits_per_sample.as_slice() {
-    //         [8, 8, 8] => self.clone(),
-    //         [16] => {
-
-    //             for i in 0..self.dimensions.0 {
-    //                 for j in 0..self.dimensions.1 {
-    //                     if let Some(p) = self.get_pixel(i, j) {
-    //                         rgba.put
-    //                     }
-    //                 }
-    //             }
-    //             for i in 0..self.dimensions.0 {
-    //                 for j in 0..self.dimensions.1 {
-    //                     if let Some(p) = self.get_pixel(i, j) {
-    //                         rgba.put
-    //                     }
-    //                 }
-    //             }
-    //             rgba
-    //         }
-    //     }
-    // }
 }
 
 impl Display for Raster {
