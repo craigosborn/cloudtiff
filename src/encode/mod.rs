@@ -35,7 +35,7 @@ impl Encoder {
             projection: None,
             endian: Endian::Little,
             variant: TiffVariant::Big,
-            compression: SupportedCompression::Uncompressed,
+            compression: SupportedCompression::Lzw,
             tile_dimensions: (512, 512),
         })
     }

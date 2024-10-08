@@ -82,6 +82,7 @@ cargo run --example wmts
 [AWS Sentinel-2](https://registry.opendata.aws/sentinel-2-l2a-cogs/)  
 [NASA EarthData](https://www.earthdata.nasa.gov/engage/cloud-optimized-geotiffs)  
 [rio-tiler](https://github.com/cogeotiff/rio-tiler/tree/6.4.0/tests/fixtures)  
+[OpenAerialMap](https://map.openaerialmap.org/)
 
 ### Related Libraries
 [cog3pio](https://github.com/weiji14/cog3pio) (Read only)  
