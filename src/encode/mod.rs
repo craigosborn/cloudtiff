@@ -1,9 +1,10 @@
-use crate::cog::{Compression, Predictor, Region};
+use crate::cog::{Compression, Predictor};
 use crate::geotags::{GeoKeyId, GeoKeyValue, GeoTags};
 use crate::raster::{PlanarConfiguration, Raster};
 use crate::tiff::{Endian, TagData, TagId, Tiff, TiffVariant};
 use image::DynamicImage;
 use std::io::{Seek, SeekFrom, Write};
+use crate::Region;
 
 pub mod error;
 

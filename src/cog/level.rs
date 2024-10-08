@@ -1,6 +1,6 @@
 use super::compression::{Compression, Predictor};
 use super::CloudTiffError;
-use super::{Region, UnitFloat};
+use crate::{Region, UnitFloat};
 use crate::raster::{PhotometricInterpretation, Raster, SampleFormat};
 use crate::tiff::{Endian, Ifd, TagId, TiffError};
 use std::fmt::Display;

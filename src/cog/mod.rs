@@ -2,24 +2,21 @@ use crate::geotags::GeoTags;
 use crate::tiff::Tiff;
 use std::fmt::Display;
 use std::io::{BufReader, Read, Seek};
+use crate::projection::Projection;
+use crate::Region;
 
 mod compression;
 mod error;
 mod level;
-mod projection;
-mod render;
 
 pub use compression::{Compression, Predictor, DecompressError};
 pub use error::{CloudTiffError, CloudTiffResult};
 pub use level::Level;
-pub use projection::primatives::{Point2D, Region, UnitFloat};
-pub use projection::Projection;
-pub use render::wmts;
 
 #[derive(Clone, Debug)]
 pub struct CloudTiff {
-    levels: Vec<Level>,
-    projection: Projection,
+    pub levels: Vec<Level>,
+    pub projection: Projection,
 }
 
 impl CloudTiff {
@@ -65,13 +62,6 @@ impl CloudTiff {
 
     pub fn bounds_lat_lon_deg(&self) -> CloudTiffResult<Region<f64>> {
         Ok(self.projection.bounds_lat_lon_deg()?)
-    }
-
-    pub fn bounds_wmts(&self, tile_dim: (u32, u32)) -> CloudTiffResult<(Region<f64>, (u32, u32))> {
-        let (bounds, (min_z, max_z)) =
-            wmts::bounds_wmts(self.bounds_lat_lon_deg()?, self.full_dimensions(), tile_dim);
-
-        Ok((bounds, (min_z, max_z)))
     }
 
     pub fn full_dimensions(&self) -> (u32, u32) {

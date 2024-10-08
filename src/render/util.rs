@@ -1,15 +1,12 @@
-use std::collections::HashMap;
-
-use crate::cog::projection::ProjectionError;
-use crate::cog::{CloudTiff, CloudTiffResult, Level, Projection};
-use crate::cog::{Region, UnitFloat};
+use crate::cog::{CloudTiff, CloudTiffResult, Level};
+use crate::projection::{Projection, ProjectionError};
 use crate::CloudTiffError;
+use crate::{Region, UnitFloat};
 use proj4rs::Proj;
+use std::collections::HashMap;
 use tracing::*;
 
 pub type PixelMap = HashMap<usize, Vec<((f64, f64), (u32, u32))>>;
-
-const MAX_PIXEL_DEVIATION: f64 = 1.0;
 
 pub fn render_level_from_crop<'a>(
     cog: &'a CloudTiff,
@@ -117,85 +114,4 @@ pub fn project_pixel_map(
     } else {
         Ok(pixel_map)
     }
-}
-
-pub fn is_simililarity_valid(
-    projection: &Projection,
-    epsg: u16,
-    region: &Region<f64>,
-    dimensions: &(u32, u32),
-) -> Option<f64> {
-    // println!("region: {region:?}");
-    let output_proj = Proj::from_epsg_code(epsg)
-        .map_err(|e| ProjectionError::from(e))
-        .ok()?;
-    let origin = projection
-        .transform_from_proj(&output_proj, region.x.min, region.y.min, 0.0)
-        .ok()?;
-    let right = projection
-        .transform_from_proj(&output_proj, region.x.max, region.y.min, 0.0)
-        .ok()?;
-    let down = projection
-        .transform_from_proj(&output_proj, region.x.min, region.y.max, 0.0)
-        .ok()?;
-    let across = projection
-        .transform_from_proj(&output_proj, region.x.max, region.y.max, 0.0)
-        .ok()?;
-
-    let dudx = (right.0 - origin.0) / region.x.range();
-    let dvdx = (right.1 - origin.1) / region.x.range();
-    let dudy = (down.0 - origin.0) / region.y.range();
-    let dvdy = (down.1 - origin.1) / region.y.range();
-
-    let projected_across = (
-        origin.0 + dudx * region.x.range() + dudy * region.y.range(),
-        origin.1 + dvdx * region.x.range() + dvdy * region.y.range(),
-    );
-    let deviation =
-        ((projected_across.0 - across.0).powi(2) + (projected_across.1 - across.1).powi(2)).sqrt();
-    let pixel_size = ((across.0 - origin.0).powi(2) + (across.1 - origin.1).powi(2)).sqrt()
-        / ((dimensions.0 as f64).powi(2) + (dimensions.1 as f64).powi(2)).sqrt();
-    let relative_deviation = deviation / pixel_size;
-
-    if relative_deviation <= MAX_PIXEL_DEVIATION {
-        Some(relative_deviation)
-    } else {
-        None
-    }
-}
-
-pub fn project_pixel_map_simililarity(
-    level: &Level,
-    projection: &Projection,
-    epsg: u16,
-    region: &Region<f64>,
-    dimensions: &(u32, u32),
-) -> CloudTiffResult<PixelMap> {
-    let mut pixel_map = HashMap::new();
-
-    let output_proj = Proj::from_epsg_code(epsg).map_err(|e| ProjectionError::from(e))?;
-    let origin = projection.transform_from_proj(&output_proj, region.x.min, region.y.max, 0.0)?;
-    let right = projection.transform_from_proj(&output_proj, region.x.max, region.y.max, 0.0)?;
-    let down = projection.transform_from_proj(&output_proj, region.x.min, region.y.min, 0.0)?;
-    
-    let dudx = (right.0 - origin.0) / region.x.range();
-    let dvdx = (right.1 - origin.1) / region.x.range();
-    let dudy = (down.0 - origin.0) / region.y.range();
-    let dvdy = (down.1 - origin.1) / region.y.range();
-
-    let dxdi = region.x.range() / dimensions.0 as f64;
-    let dydj = region.y.range() / dimensions.1 as f64;
-    for j in 0..dimensions.1 {
-        let dy = dydj * j as f64;
-        for i in 0..dimensions.0 {
-            let dx = dxdi * i as f64;
-            let u = origin.0 + dudx * dx + dudy * dy;
-            let v = origin.1 + dvdx * dx + dvdy * dy;
-            if let Ok((tile_index, tile_x, tile_y)) = level.index_from_image_coords(u, v) {
-                let tile_pixel_map = pixel_map.entry(tile_index).or_insert(vec![]);
-                tile_pixel_map.push(((tile_x, tile_y), (i, j)));
-            }
-        }
-    }
-    Ok(pixel_map)
 }

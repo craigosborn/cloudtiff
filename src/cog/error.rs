@@ -1,6 +1,6 @@
 use super::compression::DecompressError;
-use super::projection::ProjectionError;
 use crate::geotags::GeoTiffError;
+use crate::projection::ProjectionError;
 use crate::raster::RasterError;
 use crate::tiff::TiffError;
 use std::fmt::Debug;
@@ -15,7 +15,6 @@ pub enum CloudTiffError {
     BadGeoTiff(GeoTiffError),
     TileLevelOutOfRange((usize, usize)),
     TileIndexOutOfRange((usize, usize)),
-    BadWmtsTileIndex((u32,u32,u32)),
     ImageCoordOutOfRange((f64, f64)),
     ReadError(io::Error),
     DecompresionError(DecompressError),
@@ -36,7 +35,7 @@ impl From<TiffError> for CloudTiffError {
     fn from(e: TiffError) -> Self {
         match e {
             TiffError::ReadError(io_error) => CloudTiffError::ReadError(io_error),
-            tiff_error => CloudTiffError::BadTiff(tiff_error)
+            tiff_error => CloudTiffError::BadTiff(tiff_error),
         }
     }
 }

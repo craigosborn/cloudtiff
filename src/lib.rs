@@ -1,13 +1,15 @@
-mod cog;
-mod encode;
-mod geotags;
-mod io;
-mod raster;
-mod tiff;
+pub mod cog;
+pub mod encode;
+pub mod geotags;
+pub mod io;
+pub mod projection;
+pub mod raster;
+pub mod render;
+pub mod tiff;
 
 pub use cog::{disect, CloudTiff, CloudTiffError};
-pub use cog::{Point2D, Region};
 pub use encode::{EncodeError, Encoder, SupportedCompression};
+pub use projection::primatives::{Point2D, Region, UnitFloat};
 
 // IO exports
 #[cfg(feature = "http")]
