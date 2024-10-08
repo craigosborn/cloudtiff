@@ -26,6 +26,7 @@ impl From<Proj4Error> for ProjectionError {
 }
 #[derive(Clone, Debug)]
 pub struct Projection {
+    pub epsg: u16,
     pub proj: Proj,
     pub origin: (f64, f64, f64),
     pub scale: (f64, f64, f64),
@@ -100,6 +101,7 @@ impl Projection {
         );
 
         Ok(Self {
+            epsg,
             proj,
             origin,
             scale,
