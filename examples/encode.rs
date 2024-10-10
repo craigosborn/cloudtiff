@@ -22,9 +22,9 @@ fn main() {
             32609,
             Region::new(
                 tiepoint.0,
-                tiepoint.1,
-                tiepoint.0 + pixel_scale.0 * full_dim.0 as f64,
                 tiepoint.1 - pixel_scale.1 * full_dim.1 as f64,
+                tiepoint.0 + pixel_scale.0 * full_dim.0 as f64,
+                tiepoint.1,
             ),
         )
         .with_tile_size(256)

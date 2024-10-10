@@ -124,7 +124,7 @@ impl Ifd {
         let mut offsets = HashMap::new();
         let mut extra_data = vec![];
         let offset_size = variant.offset_bytesize();
-        let (header_size, tag_size) = match variant {
+        let (_header_size, tag_size) = match variant {
             TiffVariant::Normal => (2, 12),
             TiffVariant::Big => (8, 20),
         };
@@ -132,7 +132,7 @@ impl Ifd {
             stream.stream_position()? + tag_size * tag_count as u64 + offset_size as u64;
 
         // Write each tag in the IFD
-        for (i, tag) in self.0.iter().enumerate() {
+        for (_i, tag) in self.0.iter().enumerate() {
             endian.write(stream, tag.code as u16)?;
             endian.write(stream, tag.datatype as u16)?;
             variant.write_offset(endian, stream, tag.count as u64)?;
@@ -150,8 +150,10 @@ impl Ifd {
                     .chain(vec![0; offset_size].into_iter())
                     .take(offset_size)
                     .collect();
+                let data_offset = stream.stream_position()?;
                 stream.write_all(&bytes)?;
-                header_size + tag_size * i as u64 + 4 + offset_size as u64
+                data_offset
+
             };
 
             offsets.insert(tag.code, offset);

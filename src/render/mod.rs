@@ -13,9 +13,9 @@ use {
     tokio::sync::Mutex as AsyncMutex,
 };
 
-mod renderer;
-mod tiles;
-mod util;
+pub mod renderer;
+pub mod tiles;
+pub mod util;
 
 pub struct ReaderRequired;
 

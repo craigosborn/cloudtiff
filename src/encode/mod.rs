@@ -93,7 +93,7 @@ impl Encoder {
         let (epsg, tiepoint, pixel_scale) = match self.projection {
             Some((epsg, region)) => (
                 epsg,
-                [0.0, 0.0, 0.0, region.x.min, region.y.min, 0.0],
+                [0.0, 0.0, 0.0, region.x.min, region.y.max, 0.0],
                 [
                     region.x.range().abs() / (full_dims.0 as f64),
                     region.y.range().abs() / (full_dims.1 as f64),
@@ -169,12 +169,11 @@ impl Encoder {
 
         // TODO add any general TIFF tags to idf0
 
-        // TODO assumes each pyramid is half the previous size
+        // Each pyramid is half the previous size
         let overview_levels = ((full_dims.0 as f32 / self.tile_dimensions.0 as f32)
             .log2()
-            .min((full_dims.1 as f32 / self.tile_dimensions.1 as f32).log2())
-            .floor()) as usize;
-        // TODO more overlay levels
+            .max((full_dims.1 as f32 / self.tile_dimensions.1 as f32).log2())
+            .ceil()) as usize;
 
         // Full and Overview IFD tags
         for i in 0..=overview_levels {

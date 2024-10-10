@@ -10,6 +10,9 @@ pub mod tiff;
 pub use cog::{disect, CloudTiff, CloudTiffError};
 pub use encode::{EncodeError, Encoder, SupportedCompression};
 pub use projection::primatives::{Point2D, Region, UnitFloat};
+pub use projection::Projection;
+pub use proj4rs::Proj;
+pub use render::tiles;
 
 // IO exports
 #[cfg(feature = "http")]
