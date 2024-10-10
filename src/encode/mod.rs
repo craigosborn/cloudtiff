@@ -2,9 +2,9 @@ use crate::cog::{Compression, Predictor};
 use crate::geotags::{GeoKeyId, GeoKeyValue, GeoTags};
 use crate::raster::{PlanarConfiguration, Raster};
 use crate::tiff::{Endian, TagData, TagId, Tiff, TiffVariant};
+use crate::Region;
 use image::DynamicImage;
 use std::io::{Seek, SeekFrom, Write};
-use crate::Region;
 
 pub mod error;
 
@@ -80,6 +80,12 @@ impl Encoder {
         let sample_format: Vec<u16> = self
             .raster
             .sample_format
+            .iter()
+            .map(|v| (*v).into())
+            .collect();
+        let extra_samples: Vec<u16> = self
+            .raster
+            .extra_samples
             .iter()
             .map(|v| (*v).into())
             .collect();
@@ -241,6 +247,13 @@ impl Encoder {
                 TagData::Short(sample_format.clone()),
                 endian,
             );
+            if extra_samples.len() > 0 {
+                ifd.set_tag(
+                    TagId::ExtraSamples,
+                    TagData::Short(extra_samples.clone()),
+                    endian,
+                );
+            }
 
             ifd.0.sort_by(|a, b| a.code.cmp(&b.code)); // TIFF Tags should be sorted
         }

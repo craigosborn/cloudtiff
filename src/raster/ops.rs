@@ -32,6 +32,7 @@ impl Raster {
             self.bits_per_sample.clone(),
             self.interpretation,
             self.sample_format.clone(),
+            self.extra_samples.clone(),
             self.endian,
         )
     }
@@ -63,6 +64,7 @@ impl Raster {
             self.bits_per_sample.clone(),
             self.interpretation,
             self.sample_format.clone(),
+            self.extra_samples.clone(),
             self.endian,
         )
     }

@@ -48,3 +48,14 @@ pub enum PlanarConfiguration {
     #[num_enum(default)]
     Unknown = 0xFFFF,
 }
+
+#[derive(Debug, PartialEq, Clone, Copy, IntoPrimitive, FromPrimitive)]
+#[repr(u16)]
+pub enum ExtraSamples {
+    Unspecified = 0,
+    AssociatedAlpha = 1,
+    UnassociatedAlpha = 2,
+
+    #[num_enum(default)]
+    Unknown = 0xFFFF,
+}

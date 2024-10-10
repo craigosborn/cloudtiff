@@ -89,6 +89,7 @@ pub fn render_image_crop_from_tile_cache(
         level.bits_per_sample.clone(),
         level.interpretation,
         level.sample_format.clone(),
+        level.extra_samples.clone(),
         level.endian,
     );
     let dxdi = crop.x.range().as_f64() / dimensions.0 as f64;
@@ -122,6 +123,7 @@ fn render_pixel_map(
         level.bits_per_sample.clone(),
         level.interpretation,
         level.sample_format.clone(),
+        level.extra_samples.clone(),
         level.endian,
     );
     for (tile_index, tile_pixel_map) in pixel_map.iter() {

@@ -1,6 +1,6 @@
 #![cfg(feature = "image")]
 
-use super::{photometrics::PhotometricInterpretation as Style, RasterError, SampleFormat};
+use super::{photometrics::PhotometricInterpretation as Style, ExtraSamples, RasterError, SampleFormat};
 use crate::raster::Raster;
 use crate::tiff::Endian;
 use image::{DynamicImage, ImageBuffer, Rgba};
@@ -15,7 +15,7 @@ impl Raster {
             [8, 8, 8, 8] => Rgba([p[0], p[1], p[2], p[3]]),
             [16] => {
                 let v: i16 = self.endian.decode([p[0], p[1]]).ok()?;
-                let v8 = (v/10).clamp(0, 255) as u8;
+                let v8 = (v / 10).clamp(0, 255) as u8;
                 Rgba([v8, v8, v8, 255])
             }
             _ => return None,
@@ -85,50 +85,73 @@ impl Raster {
             Endian::Little
         };
 
-        let (interpretation, bits_per_sample, sample_format) = match img {
-            DynamicImage::ImageLuma16(_) => {
-                (Style::BlackIsZero, vec![16], vec![SampleFormat::Unsigned])
-            }
-            DynamicImage::ImageLuma8(_) => {
-                (Style::BlackIsZero, vec![8], vec![SampleFormat::Unsigned])
-            }
+        let (interpretation, bits_per_sample, sample_format, extra_samples) = match img {
+            DynamicImage::ImageLuma16(_) => (
+                Style::BlackIsZero,
+                vec![16],
+                vec![SampleFormat::Unsigned],
+                vec![],
+            ),
+            DynamicImage::ImageLuma8(_) => (
+                Style::BlackIsZero,
+                vec![8],
+                vec![SampleFormat::Unsigned],
+                vec![],
+            ),
             DynamicImage::ImageLumaA8(_) => (
                 Style::BlackIsZero,
                 vec![8, 8],
                 vec![SampleFormat::Unsigned; 2],
+                vec![ExtraSamples::AssociatedAlpha],
             ),
-            DynamicImage::ImageRgb8(_) => {
-                (Style::RGB, vec![8, 8, 8], vec![SampleFormat::Unsigned; 3])
-            }
+            DynamicImage::ImageRgb8(_) => (
+                Style::RGB,
+                vec![8, 8, 8],
+                vec![SampleFormat::Unsigned; 3],
+                vec![],
+            ),
             DynamicImage::ImageRgba8(_) => (
                 Style::RGB,
                 vec![8, 8, 8, 8],
                 vec![SampleFormat::Unsigned; 4],
+                vec![ExtraSamples::AssociatedAlpha],
             ),
             DynamicImage::ImageLumaA16(_) => (
                 Style::BlackIsZero,
                 vec![16, 16],
                 vec![SampleFormat::Unsigned; 2],
+                vec![ExtraSamples::AssociatedAlpha],
             ),
             DynamicImage::ImageRgb16(_) => (
                 Style::RGB,
                 vec![16, 16, 16],
                 vec![SampleFormat::Unsigned; 3],
+                vec![],
             ),
             DynamicImage::ImageRgba16(_) => (
                 Style::RGB,
                 vec![16, 16, 16, 16],
                 vec![SampleFormat::Unsigned; 4],
+                vec![ExtraSamples::AssociatedAlpha],
             ),
-            DynamicImage::ImageRgb32F(_) => {
-                (Style::RGB, vec![32, 32, 32], vec![SampleFormat::Float; 3])
-            }
+            DynamicImage::ImageRgb32F(_) => (
+                Style::RGB,
+                vec![32, 32, 32],
+                vec![SampleFormat::Float; 3],
+                vec![],
+            ),
             DynamicImage::ImageRgba32F(_) => (
                 Style::RGB,
                 vec![32, 32, 32, 32],
                 vec![SampleFormat::Float; 4],
+                vec![ExtraSamples::AssociatedAlpha],
             ),
-            _ => (Style::Unknown, vec![8], vec![SampleFormat::Unsigned]),
+            _ => (
+                Style::Unknown,
+                vec![8],
+                vec![SampleFormat::Unsigned],
+                vec![],
+            ),
         };
 
         Self::new(
@@ -137,6 +160,7 @@ impl Raster {
             bits_per_sample,
             interpretation,
             sample_format,
+            extra_samples,
             endian,
         )
     }

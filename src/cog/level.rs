@@ -1,8 +1,8 @@
 use super::compression::{Compression, Predictor};
 use super::CloudTiffError;
-use crate::{Region, UnitFloat};
-use crate::raster::{PhotometricInterpretation, Raster, SampleFormat};
+use crate::raster::{ExtraSamples, PhotometricInterpretation, Raster, SampleFormat};
 use crate::tiff::{Endian, Ifd, TagId, TiffError};
+use crate::{Region, UnitFloat};
 use std::fmt::Display;
 
 #[derive(Clone, Debug)]
@@ -16,6 +16,7 @@ pub struct Level {
     pub interpretation: PhotometricInterpretation,
     pub bits_per_sample: Vec<u16>,
     pub sample_format: Vec<SampleFormat>,
+    pub extra_samples: Vec<ExtraSamples>,
     pub endian: Endian,
     pub offsets: Vec<u64>,
     pub byte_counts: Vec<usize>,
@@ -42,6 +43,14 @@ impl Level {
                     .collect::<Vec<SampleFormat>>()
             })
             .unwrap_or_else(|_| vec![SampleFormat::Unsigned; bits_per_sample.len()]);
+        let extra_samples = ifd
+            .get_tag_values::<u16>(TagId::ExtraSamples)
+            .map(|v| {
+                v.iter()
+                    .map(|v| ExtraSamples::from(*v))
+                    .collect::<Vec<ExtraSamples>>()
+            })
+            .unwrap_or_else(|_| vec![]);
         let interpretation = ifd
             .get_tag_value::<u16>(TagId::PhotometricInterpretation)
             .unwrap_or(PhotometricInterpretation::Unknown.into())
@@ -65,6 +74,7 @@ impl Level {
             interpretation,
             bits_per_sample,
             sample_format,
+            extra_samples,
             endian,
             offsets,
             byte_counts,
@@ -171,6 +181,7 @@ impl Level {
             self.bits_per_sample.clone(),
             self.interpretation,
             self.sample_format.clone(),
+            self.extra_samples.clone(),
             self.endian, // TODO shouldn't need this
         )?)
     }

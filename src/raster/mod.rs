@@ -5,7 +5,7 @@ mod image;
 mod ops;
 mod photometrics;
 
-pub use photometrics::{PhotometricInterpretation, PlanarConfiguration, SampleFormat};
+pub use photometrics::{PhotometricInterpretation, PlanarConfiguration, SampleFormat, ExtraSamples};
 
 // TODO
 //  how to deal with odd bit endianness? Have seen it both ways.
@@ -23,6 +23,7 @@ pub struct Raster {
     pub bits_per_sample: Vec<u16>,
     pub interpretation: PhotometricInterpretation,
     pub sample_format: Vec<SampleFormat>,
+    pub extra_samples: Vec<ExtraSamples>,
     pub endian: Endian,
     bits_per_pixel: u32, // cached sum of bits_per_sample
 }
@@ -34,6 +35,7 @@ impl Raster {
         bits_per_sample: Vec<u16>,
         interpretation: PhotometricInterpretation,
         sample_format: Vec<SampleFormat>,
+        extra_samples: Vec<ExtraSamples>,
         endian: Endian,
     ) -> Result<Self, RasterError> {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
@@ -53,6 +55,7 @@ impl Raster {
                 bits_per_sample,
                 interpretation,
                 sample_format,
+                extra_samples,
                 endian,
                 bits_per_pixel,
             })
@@ -64,6 +67,7 @@ impl Raster {
         bits_per_sample: Vec<u16>,
         interpretation: PhotometricInterpretation,
         sample_format: Vec<SampleFormat>,
+        extra_samples: Vec<ExtraSamples>,
         endian: Endian,
     ) -> Self {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
@@ -75,6 +79,7 @@ impl Raster {
             bits_per_sample,
             interpretation,
             sample_format,
+            extra_samples,
             endian,
             bits_per_pixel,
         }
