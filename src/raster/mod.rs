@@ -5,7 +5,10 @@ mod image;
 mod ops;
 mod photometrics;
 
-pub use photometrics::{PhotometricInterpretation, PlanarConfiguration, SampleFormat, ExtraSamples};
+pub use ops::ResizeFilter;
+pub use photometrics::{
+    ExtraSamples, PhotometricInterpretation, PlanarConfiguration, SampleFormat,
+};
 
 // TODO
 //  how to deal with odd bit endianness? Have seen it both ways.
@@ -39,7 +42,7 @@ impl Raster {
         endian: Endian,
     ) -> Result<Self, RasterError> {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
-        let bytes_per_pixel  = bits_per_pixel / 8;
+        let bytes_per_pixel = bits_per_pixel / 8;
         let required_bytes = dimensions.0 * dimensions.1 * bytes_per_pixel;
         if buffer.len() != required_bytes as usize {
             Err(RasterError::BufferSize((
@@ -152,8 +155,22 @@ impl Raster {
         Ok(())
     }
 
-    fn row_size(&self) -> u32 {
+    pub fn row_size(&self) -> u32 {
         (self.dimensions.0 * self.bits_per_pixel + 7) / 8
+    }
+
+    pub fn sample_size(&self) -> Result<u16, RasterError> {
+        if self.bits_per_sample.len() == 0 {
+            return Err(RasterError::NotSupported("Empty bits per sample".into()));
+        }
+        let first = self.bits_per_sample[0];
+        if self.bits_per_sample.iter().all(|v| *v == first) {
+            Ok(first)
+        } else {
+            Err(RasterError::NotSupported(
+                "Resize Filter Maximum only available for 8 or 16 bits per sample".into(),
+            ))
+        }
     }
 }
 

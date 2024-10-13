@@ -1,6 +1,6 @@
 use crate::cog::{Compression, Predictor};
 use crate::geotags::{GeoKeyId, GeoKeyValue, GeoTags};
-use crate::raster::{PlanarConfiguration, Raster};
+use crate::raster::{PlanarConfiguration, Raster, ResizeFilter};
 use crate::tiff::{Endian, TagData, TagId, Tiff, TiffVariant};
 use crate::Region;
 use image::DynamicImage;
@@ -25,6 +25,7 @@ pub struct Encoder {
     variant: TiffVariant,
     compression: SupportedCompression,
     tile_dimensions: (u16, u16),
+    filter: ResizeFilter,
     // TODO tiff tags
 }
 
@@ -38,6 +39,7 @@ impl Encoder {
             variant: TiffVariant::Big,
             compression: SupportedCompression::Lzw,
             tile_dimensions: (512, 512),
+            filter: ResizeFilter::Nearest,
         })
     }
 
@@ -67,6 +69,11 @@ impl Encoder {
         } else {
             TiffVariant::Normal
         };
+        self
+    }
+
+    pub fn with_filter(mut self, filter: ResizeFilter) -> Self {
+        self.filter = filter;
         self
     }
 
@@ -273,7 +280,7 @@ impl Encoder {
             let tile_cols = (width as f32 / tile_width as f32).ceil() as u32;
             let tile_rows = (height as f32 / tile_height as f32).ceil() as u32;
             let img = if i > 0 {
-                &self.raster.resize(width, height)?
+                &self.raster.resize(width, height, self.filter)?
             } else {
                 &self.raster
             };

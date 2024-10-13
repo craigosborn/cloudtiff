@@ -9,9 +9,10 @@ pub mod tiff;
 
 pub use cog::{disect, CloudTiff, CloudTiffError};
 pub use encode::{EncodeError, Encoder, SupportedCompression};
+pub use proj4rs::Proj;
 pub use projection::primatives::{Point2D, Region, UnitFloat};
 pub use projection::Projection;
-pub use proj4rs::Proj;
+pub use raster::{Raster, ResizeFilter};
 pub use render::tiles;
 
 // IO exports
