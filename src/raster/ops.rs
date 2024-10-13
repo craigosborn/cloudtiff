@@ -25,7 +25,7 @@ impl Raster {
 
         let full_width = self.dimensions.0 as f32;
         let full_height = self.dimensions.1 as f32;
-        let scale = (width as f32 / full_width, height as f32 / full_height);
+        let scale = (full_width / width as f32, full_height / height as f32);
         match filter {
             ResizeFilter::Nearest => {
                 for j in 0..height {
@@ -46,21 +46,25 @@ impl Raster {
                         "Sample size {sample_size} not supported in ResizeFilter::Maximum"
                     )));
                 }
+                let samples = self.bits_per_sample.len();
                 for j in 0..height {
                     let v_start = (j as f32 * scale.1) as u32;
                     let v_end = ((j + 1) as f32 * scale.1).ceil() as u32;
                     for i in 0..width {
                         let u_start = (i as f32 * scale.0) as u32;
                         let u_end = ((i + 1) as f32 * scale.0).ceil() as u32;
-                        let mut value: u8 = 0;
-                        for v in v_start..v_end {
-                            for u in u_start..u_end {
-                                let src = (v * self.dimensions.0 + u) as usize * bytes_per_pixel;
-                                value = value.max(self.buffer[src]);
-                            }
-                        }
                         let dst = (j * width + i) as usize * bytes_per_pixel;
-                        buffer[dst] = value;
+                        for s in 0..samples {
+                            let mut value: u8 = 0;
+                            for v in v_start..v_end {
+                                for u in u_start..u_end {
+                                    let src =
+                                        (v * self.dimensions.0 + u) as usize * bytes_per_pixel;
+                                    value = value.max(self.buffer[src+s]);
+                                }
+                            }
+                            buffer[dst + s] = value;
+                        }
                     }
                 }
             }

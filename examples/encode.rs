@@ -28,6 +28,7 @@ fn main() {
             ),
         )
         .with_tile_size(256)
+        .with_filter(cloudtiff::ResizeFilter::Nearest)
         .with_big_tiff(false);
 
     let mut file = File::create(OUTPUT_COG).unwrap();
