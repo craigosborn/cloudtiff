@@ -272,17 +272,17 @@ impl Encoder {
         let mut ifd_tile_offsets = vec![vec![]; overview_levels + 1];
         let mut ifd_tile_bytes = vec![vec![]; overview_levels + 1];
         let (tile_width, tile_height) = self.tile_dimensions;
-        for i in (0..=overview_levels).rev() {
+        let mut prev_overview: Option<Raster> = None;
+        for i in 0..=overview_levels {
             let mut tile_offsets = vec![];
             let mut tile_byte_counts = vec![];
             let width = full_dims.0 / 2_u32.pow(i as u32);
             let height = full_dims.1 / 2_u32.pow(i as u32);
             let tile_cols = (width as f32 / tile_width as f32).ceil() as u32;
             let tile_rows = (height as f32 / tile_height as f32).ceil() as u32;
-            let img = if i > 0 {
-                &self.raster.resize(width, height, self.filter)?
-            } else {
-                &self.raster
+            let img = match prev_overview {
+                Some(raster) => raster.resize(width, height, self.filter)?,
+                None => self.raster.resize(width, height, self.filter)?,
             };
             for row in 0..tile_rows {
                 for col in 0..tile_cols {
@@ -300,6 +300,7 @@ impl Encoder {
                     tile_byte_counts.push(tile_bytes.len() as u32);
                 }
             }
+            prev_overview = Some(img);
             ifd_tile_offsets[i] = tile_offsets;
             ifd_tile_bytes[i] = tile_byte_counts;
         }

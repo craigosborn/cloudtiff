@@ -25,10 +25,7 @@ impl Raster {
 
         let full_width = self.dimensions.0 as f32;
         let full_height = self.dimensions.1 as f32;
-        let scale = (
-            (full_width - 1.0) / (width - 1) as f32,
-            (full_height - 1.0) / (height - 1) as f32,
-        );
+        let scale = (full_width / width as f32, full_height / height as f32);
         match filter {
             ResizeFilter::Nearest => {
                 for j in 0..height {
@@ -52,10 +49,10 @@ impl Raster {
                 let samples = self.bits_per_sample.len();
                 for j in 0..height {
                     let v_start = (j as f32 * scale.1) as u32;
-                    let v_end = ((j + 1) as f32 * scale.1).ceil() as u32;
+                    let v_end = ((j + 1) as f32 * scale.1) as u32;
                     for i in 0..width {
                         let u_start = (i as f32 * scale.0) as u32;
-                        let u_end = ((i + 1) as f32 * scale.0).ceil() as u32;
+                        let u_end = ((i + 1) as f32 * scale.0) as u32;
                         let dst = (j * width + i) as usize * bytes_per_pixel;
                         for s in 0..samples {
                             let mut value: u8 = 0;
