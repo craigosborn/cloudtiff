@@ -212,10 +212,14 @@ impl<T: Into<f64> + Copy> Region<T> {
 
 impl<T: fmt::Display> fmt::Display for Region<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Region({}->{}, {}->{})",
-            self.x.min,self.x.max,self.y.min,self.y.max
-        )
+        write!(f, "Region(")?;
+        self.x.min.fmt(f)?;
+        write!(f, " -> ")?;
+        self.x.max.fmt(f)?;
+        write!(f, ", ")?;
+        self.y.min.fmt(f)?;
+        write!(f, " -> ")?;
+        self.y.max.fmt(f)?;
+        write!(f, ")")
     }
 }
