@@ -1,4 +1,5 @@
 use std::io;
+use std::fmt;
 
 use super::TagId;
 
@@ -16,3 +17,11 @@ impl From<io::Error> for TiffError {
         TiffError::ReadError(e)
     }
 }
+
+impl fmt::Display for TiffError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for TiffError {}

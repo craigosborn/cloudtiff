@@ -3,7 +3,7 @@ use crate::geotags::GeoTiffError;
 use crate::projection::ProjectionError;
 use crate::raster::RasterError;
 use crate::tiff::TiffError;
-use std::fmt::Debug;
+use std::fmt;
 use std::io;
 use std::sync::PoisonError;
 
@@ -30,6 +30,14 @@ pub enum CloudTiffError {
     #[cfg(feature = "async")]
     AsyncJoinError(tokio::task::JoinError),
 }
+
+impl fmt::Display for CloudTiffError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for CloudTiffError {}
 
 impl From<TiffError> for CloudTiffError {
     fn from(e: TiffError) -> Self {

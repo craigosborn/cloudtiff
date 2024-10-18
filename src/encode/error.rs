@@ -1,5 +1,5 @@
 use crate::raster::RasterError;
-use std::fmt::Debug;
+use std::fmt;
 use std::io;
 use crate::cog::DecompressError;
 
@@ -12,6 +12,14 @@ pub enum EncodeError {
     UnsupportedProjection(u16, String),
     CompressionError(DecompressError),
 }
+
+impl fmt::Display for EncodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for EncodeError {}
 
 impl From<io::Error> for EncodeError {
     fn from(e: io::Error) -> Self {
