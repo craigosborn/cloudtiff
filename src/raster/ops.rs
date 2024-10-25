@@ -77,7 +77,7 @@ impl Raster {
                     Err(e) => return Err(RasterError::NotSupported(format!("Cannot convert to DynamicImage, use a different ResizeFilter: {e}")))
                 };
                 let img_resized= img.resize(width, height, image::imageops::CatmullRom);
-                buffer = img_resized.as_bytes().to_vec(); // TODO endian
+                return Raster::from_image(&img_resized);
             }
         }
         Self::new(
