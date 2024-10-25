@@ -5,6 +5,8 @@ use crate::Region;
 pub enum ResizeFilter {
     Nearest,
     Maximum,
+    #[cfg(feature = "image")]
+    CatmulRod
 }
 
 impl Raster {
@@ -67,6 +69,15 @@ impl Raster {
                         }
                     }
                 }
+            }
+            #[cfg(feature = "image")]
+            ResizeFilter::CatmulRod => {
+                let img = match self.clone().into_image() {
+                    Ok(img) => img,
+                    Err(e) => return Err(RasterError::NotSupported(format!("Cannot convert to DynamicImage, use a different ResizeFilter: {e}")))
+                };
+                let img_resized= img.resize(width, height, image::imageops::CatmullRom);
+                buffer = img_resized.as_bytes().to_vec(); // TODO endian
             }
         }
         Self::new(

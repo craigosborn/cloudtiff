@@ -76,6 +76,10 @@ impl TryInto<DynamicImage> for Raster {
 }
 
 impl Raster {
+    pub fn into_image(self) -> Result<DynamicImage, String> {
+        self.try_into()
+    }
+
     pub fn from_image(img: &DynamicImage) -> Result<Self, RasterError> {
         let dimensions = (img.width(), img.height());
         let buffer = img.as_bytes().to_vec();
