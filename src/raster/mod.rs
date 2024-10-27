@@ -43,7 +43,7 @@ impl Raster {
     ) -> Result<Self, RasterError> {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
         let bytes_per_pixel = bits_per_pixel / 8;
-        let required_bytes = dimensions.0 * dimensions.1 * bytes_per_pixel;
+        let required_bytes = dimensions.0 as usize * dimensions.1 as usize * bytes_per_pixel as usize;
         if buffer.len() != required_bytes as usize {
             Err(RasterError::BufferSize((
                 buffer.len(),
@@ -74,8 +74,8 @@ impl Raster {
         endian: Endian,
     ) -> Self {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
-        let required_bytes = dimensions.0 * dimensions.1 * bits_per_pixel / 8;
-        let buffer = vec![0; required_bytes as usize];
+        let required_bytes = dimensions.0 as usize * dimensions.1 as usize * bits_per_pixel as usize / 8;
+        let buffer = vec![0; required_bytes];
         Self {
             dimensions,
             buffer,
