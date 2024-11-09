@@ -1,3 +1,6 @@
+#[cfg(not(feature = "http"))]
+compile_error!("This example requires the 'http' feature");
+
 use cloudtiff::{AsyncReadRange, HttpReader};
 use std::time::Instant;
 use tokio::io::AsyncReadExt;

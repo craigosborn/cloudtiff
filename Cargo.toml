@@ -6,7 +6,7 @@ authors = ["Craig Osborn <craig@craigosborn.dev>"]
 description = "A Cloud Optimized GeoTIFF library for Rust"
 
 [features]
-default = ["image", "async", "http", "s3"]
+default = ["image", "async"]
 async = ["tokio", "futures", "rayon"]
 http = ["async", "reqwest"]
 s3 = ["async", "aws-config", "aws-sdk-s3"]
