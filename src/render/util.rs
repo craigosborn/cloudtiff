@@ -33,6 +33,7 @@ pub fn render_level_from_region<'a>(
     region: &Region<f64>,
     dimensions: &(u32, u32),
 ) -> CloudTiffResult<&'a Level> {
+    // left top right bottom are in relative image coordinates (0-1 per axis)
     let (left, top, ..) = cog
         .projection
         .transform_from(region.x.min, region.y.min, 0.0, epsg)?;
@@ -40,18 +41,26 @@ pub fn render_level_from_region<'a>(
         cog.projection
             .transform_from(region.x.max, region.y.max, 0.0, epsg)?;
 
-    // Determine render level
-    //   TODO this method not accurate if projections are not aligned
-    let pixel_scale_x = (right - left).abs() / dimensions.0 as f64;
-    let pixel_scale_y = (top - bottom).abs() / dimensions.1 as f64;
-    let min_pixel_scale = pixel_scale_x.min(pixel_scale_y);
-    let level_scales = cog.pixel_scales();
-    let level_index = level_scales
+    let proportion_x = (right - left).abs();
+    let proportion_y = (top - bottom).abs();
+
+    let resolutions: Vec<(u32, u32)> = cog
+        .levels
+        .iter()
+        .map(|level| {
+            (
+                (proportion_x * level.dimensions.0 as f64) as u32,
+                (proportion_y * level.dimensions.1 as f64) as u32,
+            )
+        })
+        .collect();
+
+    let level_index = resolutions
         .iter()
         .enumerate()
         .rev()
-        .find(|(_, (level_scale_x, level_scale_y))| {
-            level_scale_x.max(*level_scale_y) < min_pixel_scale
+        .find(|(_, (x, y))| {
+            *x >= dimensions.0 && *y >= dimensions.1
         })
         .map(|(i, _)| i)
         .unwrap_or(0);

@@ -99,7 +99,7 @@ impl CloudTiff {
             .map(|level| {
                 (
                     scale.0 / level.dimensions.0 as f64,
-                    scale.1 / level.dimensions.0 as f64,
+                    scale.1 / level.dimensions.1 as f64,
                 )
             })
             .collect()
