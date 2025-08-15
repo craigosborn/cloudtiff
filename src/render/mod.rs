@@ -38,6 +38,7 @@ pub struct RenderBuilder<'a, R> {
 pub enum RenderRegion {
     InputCrop(Region<UnitFloat>),
     OutputRegion((u16, Region<f64>)),
+    Tile((usize, usize, usize)),
 }
 
 impl CloudTiff {
@@ -157,6 +158,16 @@ impl<'a, S> RenderBuilder<'a, S> {
         max_y: f64,
     ) -> Self {
         self.region = RenderRegion::OutputRegion((epsg, Region::new(min_x, min_y, max_x, max_y)));
+        self
+    }
+
+    pub fn of_tile(
+        mut self,
+        x: usize,
+        y: usize,
+        z: usize,
+    ) -> Self {
+        self.region = RenderRegion::Tile((x,y,z));
         self
     }
 }

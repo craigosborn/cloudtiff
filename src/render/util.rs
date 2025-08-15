@@ -59,9 +59,7 @@ pub fn render_level_from_region<'a>(
         .iter()
         .enumerate()
         .rev()
-        .find(|(_, (x, y))| {
-            *x >= dimensions.0 && *y >= dimensions.1
-        })
+        .find(|(_, (x, y))| *x >= dimensions.0 && *y >= dimensions.1)
         .map(|(i, _)| i)
         .unwrap_or(0);
 

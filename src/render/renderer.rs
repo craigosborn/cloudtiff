@@ -34,6 +34,11 @@ impl<'a> RenderBuilder<'a, SyncReader> {
                 let tile_cache = tiles::get_tiles(&self.reader, level, indices);
                 render_pixel_map(&pixel_map, level, &tile_cache, &dimensions)
             }
+            RenderRegion::Tile((x, y, z)) => {
+                let level = self.cog.get_level(z)?;
+                let index = level.tile_index(y, x);
+                tiles::get_tile(&self.reader, level, index)
+            }
         }
     }
 }
@@ -72,6 +77,11 @@ mod not_sync {
                     let indices = pixel_map.iter().map(|(i, _)| *i).collect();
                     let tile_cache = tiles::get_tiles_async(&self.reader, level, indices).await;
                     render_pixel_map(&pixel_map, level, &tile_cache, &dimensions)
+                }
+                RenderRegion::Tile((x, y, z)) => {
+                    let level = self.cog.get_level(z)?;
+                    let index = level.tile_index(y, x);
+                    tiles::get_tile_async(&self.reader, level, index).await
                 }
             }
         }

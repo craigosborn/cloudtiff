@@ -3,6 +3,9 @@ use std::env;
 use std::fs::File;
 use std::io::BufReader;
 
+// Use
+// cargo run --example disect -- path/to/some/cog.tif
+
 const SAMPLE_COG: &str = "data/sample.tif";
 
 fn main() {

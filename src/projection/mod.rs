@@ -10,6 +10,8 @@ pub mod primatives;
 //   TODO verify 3D support
 //   TODO recognize units (e.g. degrees vs radians)
 
+// BUG projection to 4326 seems to end up in radians
+
 #[derive(Debug)]
 pub enum ProjectionError {
     MissingGeoKey(GeoKeyId),
@@ -63,6 +65,7 @@ impl Projection {
                 .and_then(|key| key.value.as_number()),
         ) {
             (4326, Some(9102)) => 1_f64.to_radians(),
+            (4326, None) => 1_f64.to_radians(),
             _ => 1.0,
         };
 
@@ -216,13 +219,16 @@ impl Projection {
             [0.0, 0.5],
         ]
         .into_iter()
-        .fold(Region::new(f64::MAX,f64::MAX,f64::MIN,f64::MIN), |region, [u, v]| {
-            if let Ok((x, y, _)) = self.transform_into(u, v, 0.0, epsg) {
-                region.extend(&Point2D{x,y})
-            } else {
-                region
-            }
-        })
+        .fold(
+            Region::new(f64::MAX, f64::MAX, f64::MIN, f64::MIN),
+            |region, [u, v]| {
+                if let Ok((x, y, _)) = self.transform_into(u, v, 0.0, epsg) {
+                    region.extend(&Point2D { x, y })
+                } else {
+                    region
+                }
+            },
+        )
     }
 
     pub fn bounds_in_proj(&self, proj: &Proj) -> Result<Region<f64>, ProjectionError> {

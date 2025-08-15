@@ -115,6 +115,10 @@ impl Level {
         indices
     }
 
+    pub fn tile_index(&self, row: usize, col: usize) -> usize {
+        row * self.col_count() + col
+    }
+
     pub fn index_from_image_coords(
         &self,
         x: f64,

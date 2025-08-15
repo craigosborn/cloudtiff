@@ -1,4 +1,4 @@
-use super::SyncReader;
+use super::{CloudTiffResult, SyncReader};
 use crate::cog::Level;
 use crate::raster::Raster;
 use std::collections::HashMap;
@@ -34,12 +34,21 @@ pub fn get_tiles(reader: &SyncReader, level: &Level, indices: Vec<usize>) -> Til
         .collect()
 }
 
+pub fn get_tile(reader: &SyncReader, level: &Level, index: usize) -> CloudTiffResult<Raster> {
+    let (start, end) = level.tile_byte_range(index)?;
+    let n = (end - start) as usize;
+    let mut buf = vec![0; n];
+    let _ = reader.0.read_range_exact(start, &mut buf)?;
+    let tile = level.extract_tile_from_bytes(&buf)?;
+    Ok(tile)
+}
+
 #[cfg(feature = "async")]
 pub use not_sync::*;
 #[cfg(feature = "async")]
 mod not_sync {
-    use super::*;
     use super::super::AsyncReader;
+    use super::*;
     use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
     pub async fn get_tiles_async(
@@ -107,5 +116,18 @@ mod not_sync {
         }
 
         tile_cache
+    }
+
+    pub async fn get_tile_async(
+        reader: &AsyncReader,
+        level: &Level,
+        index: usize,
+    ) -> CloudTiffResult<Raster> {
+        let (start, end) = level.tile_byte_range(index)?;
+        let n = (end - start) as usize;
+        let mut buf = vec![0; n];
+        let _ = reader.0.read_range_exact_async(start, &mut buf).await?;
+        let tile = level.extract_tile_from_bytes(&buf)?;
+        Ok(tile)
     }
 }
