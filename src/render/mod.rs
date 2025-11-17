@@ -144,8 +144,8 @@ impl<'a, S> RenderBuilder<'a, S> {
             4326,
             west.to_radians(),
             south.to_radians(),
-            north.to_radians(),
             east.to_radians(),
+            north.to_radians(), 
         )
     }
 
