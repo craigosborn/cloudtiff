@@ -171,11 +171,22 @@ impl Encoder {
                     GeoKeyValue::Short(vec![9001]),
                 );
             }
+            3857 => {
+                geo.set_key(GeoKeyId::GTModelTypeGeoKey, GeoKeyValue::Short(vec![1]));
+                geo.set_key(GeoKeyId::GTRasterTypeGeoKey, GeoKeyValue::Short(vec![1]));
+                geo.set_key(
+                    GeoKeyId::ProjectedCSTypeGeoKey,
+                    GeoKeyValue::Short(vec![3857]),
+                );
+                geo.set_key(
+                    GeoKeyId::ProjLinearUnitsGeoKey,
+                    GeoKeyValue::Short(vec![9001]),
+                );
+            }
             _ => {
-                return Err(EncodeError::UnsupportedProjection(
-                    epsg,
-                    "Only EPSG 4326 supported at this time".into(),
-                ))
+                return Err(EncodeError::UnsupportedProjection(format!(
+                    "EPSG:{epsg} not yet supported"
+                )))
             }
         }
         geo.add_to_ifd(ifd0, endian);

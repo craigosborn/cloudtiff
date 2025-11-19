@@ -9,7 +9,7 @@ pub type EncodeResult<T> = Result<T, EncodeError>;
 pub enum EncodeError {
     WriteError(io::Error),
     RasterizationError(RasterError),
-    UnsupportedProjection(u16, String),
+    UnsupportedProjection(String),
     CompressionError(DecompressError),
 }
 
