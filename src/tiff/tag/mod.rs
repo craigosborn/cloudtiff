@@ -9,11 +9,11 @@ use num_enum::{FromPrimitive, IntoPrimitive};
 use num_traits::{cast::NumCast, ToPrimitive};
 use std::fmt::Display;
 
-mod id;
 mod data;
+mod id;
 
-pub use id::TagId;
 pub use data::TagData;
+pub use id::TagId;
 
 #[derive(Clone, Debug)]
 pub struct Tag {
@@ -84,13 +84,13 @@ impl Tag {
                 match self.values::<f64>() {
                     Some(v) if v.len() == 1 => format!("{}", v[0]),
                     Some(v) => format!("{:?}", v),
-                    None => format!("Undefined"),
+                    None => "Undefined".to_string(),
                 }
             }
             _ => match self.values::<i64>() {
                 Some(v) if v.len() == 1 => format!("{}", v[0]),
                 Some(v) => format!("{:?}", v),
-                None => format!("Undefined"),
+                None => "Undefined".to_string(),
             },
         }
     }
@@ -133,7 +133,7 @@ impl Tag {
 
 impl Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut value_string = format!("{}", self.as_string_lossy().replace("\n", "\\n"));
+        let mut value_string = self.as_string_lossy().replace("\n", "\\n");
         if value_string.len() > 100 {
             value_string = format!("{}...", &value_string[..98])
         }

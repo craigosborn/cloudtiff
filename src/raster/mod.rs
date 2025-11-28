@@ -43,8 +43,9 @@ impl Raster {
     ) -> Result<Self, RasterError> {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
         let bytes_per_pixel = bits_per_pixel / 8;
-        let required_bytes = dimensions.0 as usize * dimensions.1 as usize * bytes_per_pixel as usize;
-        if buffer.len() != required_bytes as usize {
+        let required_bytes =
+            dimensions.0 as usize * dimensions.1 as usize * bytes_per_pixel as usize;
+        if buffer.len() != required_bytes {
             Err(RasterError::BufferSize((
                 buffer.len(),
                 dimensions,
@@ -74,7 +75,8 @@ impl Raster {
         endian: Endian,
     ) -> Self {
         let bits_per_pixel = bits_per_sample.iter().sum::<u16>() as u32;
-        let required_bytes = dimensions.0 as usize * dimensions.1 as usize * bits_per_pixel as usize / 8;
+        let required_bytes =
+            dimensions.0 as usize * dimensions.1 as usize * bits_per_pixel as usize / 8;
         let buffer = vec![0; required_bytes];
         Self {
             dimensions,
@@ -101,7 +103,7 @@ impl Raster {
         let start = (row_offset + start_col_offset_bytes) as usize;
 
         let end_col_offset_bits = x * self.bits_per_pixel + self.bits_per_pixel;
-        let end_col_offset_bytes = (end_col_offset_bits + 7) / 8;
+        let end_col_offset_bytes = end_col_offset_bits.div_ceil(8);
         let end = (row_offset + end_col_offset_bytes) as usize;
 
         let mut pixel = self.buffer[start..end].to_vec();
@@ -130,7 +132,7 @@ impl Raster {
         let start = (row_offset + start_col_offset_bytes) as usize;
 
         let end_col_offset_bits = x * self.bits_per_pixel + self.bits_per_pixel;
-        let end_col_offset_bytes = (end_col_offset_bits + 7) / 8;
+        let end_col_offset_bytes = end_col_offset_bits.div_ceil(8);
         let end = (row_offset + end_col_offset_bytes) as usize;
 
         let n = end - start;
@@ -148,19 +150,17 @@ impl Raster {
             self.buffer[end - 1] = (self.buffer[end - 1] & !end_mask) | (pixel[n - 1] & end_mask);
         }
 
-        for i in 0..n {
-            self.buffer[start + i] = pixel[i];
-        }
+        self.buffer[start..(n + start)].copy_from_slice(&pixel[..n]);
 
         Ok(())
     }
 
     pub fn row_size(&self) -> u32 {
-        (self.dimensions.0 * self.bits_per_pixel + 7) / 8
+        (self.dimensions.0 * self.bits_per_pixel).div_ceil(8)
     }
 
     pub fn sample_size(&self) -> Result<u16, RasterError> {
-        if self.bits_per_sample.len() == 0 {
+        if self.bits_per_sample.is_empty() {
             return Err(RasterError::NotSupported("Empty bits per sample".into()));
         }
         let first = self.bits_per_sample[0];

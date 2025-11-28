@@ -7,10 +7,10 @@
 
 use std::io::{self, Read, Write};
 // use miniz_oxide::inflate::{self,TINFLStatus};
+use flate2;
 use num_enum::{FromPrimitive, IntoPrimitive};
 use salzweg::decoder::{DecodingError, TiffStyleDecoder};
 use salzweg::encoder::{EncodingError, TiffStyleEncoder};
-use flate2;
 
 #[derive(Debug)]
 pub enum DecompressError {
@@ -91,7 +91,7 @@ impl Compression {
         match self {
             Self::Uncompressed => Ok(bytes.to_vec()),
             Self::Lzw => {
-                TiffStyleDecoder::decode_to_vec(bytes).map_err(|e| DecompressError::LzwDecodeError(e))
+                TiffStyleDecoder::decode_to_vec(bytes).map_err(DecompressError::LzwDecodeError)
             }
             Self::DeflateAdobe => {
                 let mut buf = vec![];
@@ -107,10 +107,11 @@ impl Compression {
         match self {
             Self::Uncompressed => Ok(bytes.to_vec()),
             Self::Lzw => {
-                TiffStyleEncoder::encode_to_vec(bytes).map_err(|e| DecompressError::LzwEncodeError(e))
+                TiffStyleEncoder::encode_to_vec(bytes).map_err(DecompressError::LzwEncodeError)
             }
             Self::DeflateAdobe => {
-                let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+                let mut encoder =
+                    flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
                 encoder.write_all(bytes)?;
                 Ok(encoder.finish()?)
                 // inflate::decompress_to_vec_zlib(bytes).map_err(|e| DecompressError::InflateError(e.status))

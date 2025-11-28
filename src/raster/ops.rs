@@ -6,7 +6,7 @@ pub enum ResizeFilter {
     Nearest,
     Maximum,
     #[cfg(feature = "image")]
-    CatmulRod
+    CatmulRod,
 }
 
 impl Raster {
@@ -16,7 +16,7 @@ impl Raster {
         height: u32,
         filter: ResizeFilter,
     ) -> Result<Self, RasterError> {
-        if self.bits_per_pixel % 8 != 0 {
+        if !self.bits_per_pixel.is_multiple_of(8) {
             return Err(RasterError::NotSupported(format!(
                 "Pixel is not byte aligned: {} bits",
                 self.bits_per_pixel
@@ -74,9 +74,13 @@ impl Raster {
             ResizeFilter::CatmulRod => {
                 let img = match self.clone().into_image() {
                     Ok(img) => img,
-                    Err(e) => return Err(RasterError::NotSupported(format!("Cannot convert to DynamicImage, use a different ResizeFilter: {e}")))
+                    Err(e) => {
+                        return Err(RasterError::NotSupported(format!(
+                            "Cannot convert to DynamicImage, use a different ResizeFilter: {e}"
+                        )))
+                    }
                 };
-                let img_resized= img.resize(width, height, image::imageops::CatmullRom);
+                let img_resized = img.resize(width, height, image::imageops::CatmullRom);
                 return Raster::from_image(&img_resized);
             }
         }
@@ -92,7 +96,7 @@ impl Raster {
     }
 
     pub fn get_region(&self, region: Region<u32>) -> Result<Self, RasterError> {
-        if self.bits_per_pixel % 8 != 0 {
+        if !self.bits_per_pixel.is_multiple_of(8) {
             return Err(RasterError::NotSupported(format!(
                 "Pixel is not byte aligned: {} bits",
                 self.bits_per_pixel

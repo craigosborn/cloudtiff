@@ -1,15 +1,15 @@
 use crate::geotags::GeoTags;
+use crate::projection::Projection;
 use crate::tiff::Tiff;
+use crate::Region;
 use std::fmt::Display;
 use std::io::{BufReader, Read, Seek};
-use crate::projection::Projection;
-use crate::Region;
 
 mod compression;
 mod error;
 mod level;
 
-pub use compression::{Compression, Predictor, DecompressError};
+pub use compression::{Compression, DecompressError, Predictor};
 pub use error::{CloudTiffError, CloudTiffResult};
 pub use level::Level;
 
@@ -50,7 +50,7 @@ impl CloudTiff {
         for (i, level) in levels.iter_mut().enumerate() {
             level.overview = Some(i);
         }
-        if levels.len() == 0 {
+        if levels.is_empty() {
             return Err(CloudTiffError::NoLevels);
         }
 
@@ -137,7 +137,7 @@ pub fn disect<R: Read + Seek>(stream: &mut R) -> Result<(), CloudTiffError> {
     let geo = GeoTags::parse(tiff.ifd0()?)?;
     println!("{geo}");
 
-    let cog = CloudTiff::from_tiff_and_geo(tiff,geo)?;
+    let cog = CloudTiff::from_tiff_and_geo(tiff, geo)?;
     println!("{cog}");
     println!("{:?}", cog.bounds_lat_lon_deg()?);
 

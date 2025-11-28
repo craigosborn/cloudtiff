@@ -193,7 +193,7 @@ impl Projection {
         let z = self.origin.2 + w; // TODO verify this calc
 
         let mut point = (x, y, z);
-        transform(&self.proj, &to, &mut point)?;
+        transform(&self.proj, to, &mut point)?;
         Ok(point)
     }
 
@@ -232,8 +232,8 @@ impl Projection {
     }
 
     pub fn bounds_in_proj(&self, proj: &Proj) -> Result<Region<f64>, ProjectionError> {
-        let (left, top, _) = self.transform_into_proj(&proj, 0.0, 0.0, 0.0)?;
-        let (right, bottom, _) = self.transform_into_proj(&proj, 1.0, 1.0, 0.0)?;
+        let (left, top, _) = self.transform_into_proj(proj, 0.0, 0.0, 0.0)?;
+        let (right, bottom, _) = self.transform_into_proj(proj, 1.0, 1.0, 0.0)?;
         Ok(Region::new(left, bottom, right, top))
     }
 }

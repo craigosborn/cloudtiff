@@ -58,7 +58,7 @@ impl Tiff {
         Self {
             endian,
             variant,
-            ifds: vec![Ifd::new()],
+            ifds: vec![Ifd::default()],
         }
     }
 
@@ -102,11 +102,11 @@ impl Tiff {
     }
 
     pub fn ifd0(&self) -> Result<&Ifd, TiffError> {
-        self.ifds.get(0).ok_or(TiffError::NoIfd0)
+        self.ifds.first().ok_or(TiffError::NoIfd0)
     }
 
     pub fn add_ifd(&mut self) -> &mut Ifd {
-        self.ifds.push(Ifd::new());
+        self.ifds.push(Ifd::default());
         let n = self.ifds.len();
         self.ifds.get_mut(n - 1).unwrap()
     }
@@ -131,9 +131,9 @@ impl Tiff {
 
         // IFD0 offset
         if self.variant == TiffVariant::Big {
-            endian.write(stream, 16 as u64)?;
+            endian.write(stream, 16_u64)?;
         } else {
-            endian.write(stream, 8 as u32)?;
+            endian.write(stream, 8_u32)?;
         }
 
         // IFDs

@@ -6,14 +6,10 @@ use std::{
     io::{self, Read, Seek, SeekFrom, Write},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Ifd(pub Vec<Tag>);
 
 impl Ifd {
-    pub fn new() -> Self {
-        Self(vec![])
-    }
-
     pub fn parse<R: Read + Seek>(
         stream: &mut R,
         offset: u64,
@@ -41,7 +37,7 @@ impl Ifd {
             let mut data: Vec<u8> = vec![0; data_size.max(offset_size)];
 
             if data_size > offset_size {
-                let data_offset = variant.read_offset(endian, stream)? as u64;
+                let data_offset = variant.read_offset(endian, stream)?;
                 let pos = stream.stream_position()?;
                 stream.seek(SeekFrom::Start(data_offset))?;
                 stream.read_exact(&mut data)?;
@@ -63,7 +59,7 @@ impl Ifd {
         }
 
         let ifd = Ifd(tags);
-        let next_ifd_offset = variant.read_offset(endian, stream)? as u64;
+        let next_ifd_offset = variant.read_offset(endian, stream)?;
 
         Ok((ifd, next_ifd_offset))
     }
@@ -132,8 +128,8 @@ impl Ifd {
             stream.stream_position()? + tag_size * tag_count as u64 + offset_size as u64;
 
         // Write each tag in the IFD
-        for (_i, tag) in self.0.iter().enumerate() {
-            endian.write(stream, tag.code as u16)?;
+        for tag in self.0.iter() {
+            endian.write(stream, tag.code)?;
             endian.write(stream, tag.datatype as u16)?;
             variant.write_offset(endian, stream, tag.count as u64)?;
 
@@ -153,7 +149,6 @@ impl Ifd {
                 let data_offset = stream.stream_position()?;
                 stream.write_all(&bytes)?;
                 data_offset
-
             };
 
             offsets.insert(tag.code, offset);

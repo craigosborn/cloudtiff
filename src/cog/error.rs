@@ -8,6 +8,7 @@ use std::io;
 use std::sync::PoisonError;
 
 pub type CloudTiffResult<T> = Result<T, CloudTiffError>;
+pub type Region = (f64, f64, f64, f64);
 
 #[derive(Debug)]
 pub enum CloudTiffError {
@@ -21,7 +22,7 @@ pub enum CloudTiffError {
     RasterizationError(RasterError),
     ProjectionError(ProjectionError),
     NoLevels,
-    RegionOutOfBounds(((f64, f64, f64, f64), (f64, f64, f64, f64))),
+    RegionOutOfBounds((Region, Region)),
     ReadRangeError(String),
     MutexError(String),
     NotSupported(String),

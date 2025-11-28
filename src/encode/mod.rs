@@ -265,7 +265,7 @@ impl Encoder {
                 TagData::Short(sample_format.clone()),
                 endian,
             );
-            if extra_samples.len() > 0 {
+            if extra_samples.is_empty() {
                 ifd.set_tag(
                     TagId::ExtraSamples,
                     TagData::Short(extra_samples.clone()),
@@ -307,7 +307,7 @@ impl Encoder {
                     let tile_raster = img.get_region(region)?;
                     // TODO endian
                     let tile_bytes = compression.encode(&tile_raster.buffer[..])?;
-                    writer.write(&tile_bytes)?;
+                    writer.write_all(&tile_bytes)?;
                     tile_byte_counts.push(tile_bytes.len() as u32);
                 }
             }
@@ -336,7 +336,7 @@ impl Encoder {
             if let Some(offset) = offsets[i].get(&TagId::TileByteCounts.into()) {
                 writer.seek(SeekFrom::Start(*offset))?;
 
-                writer.write(&endian.encode_all(&ifd_tile_bytes[i]))?;
+                writer.write_all(&endian.encode_all(&ifd_tile_bytes[i]))?;
             }
         }
 

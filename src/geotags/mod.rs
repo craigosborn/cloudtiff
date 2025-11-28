@@ -57,7 +57,7 @@ impl Display for GeoTags {
             "  Directory: {{version: {}, revision: {}.{}}}",
             self.directory.version, self.directory.revision.0, self.directory.revision.1,
         )?;
-        if self.directory.keys.len() > 0 {
+        if !self.directory.keys.is_empty() {
             write!(f, "\n  Keys:")?;
             for key in self.directory.keys.iter() {
                 write!(f, "\n    {key}")?;
@@ -74,7 +74,7 @@ impl GeoTags {
                 tiepoint,
                 pixel_scale,
             }),
-            directory: GeoKeyDirectory::new(),
+            directory: GeoKeyDirectory::default(),
         }
     }
 
@@ -84,7 +84,7 @@ impl GeoTags {
                 tiepoint: Some(tiepoint),
                 transformation,
             }),
-            directory: GeoKeyDirectory::new(),
+            directory: GeoKeyDirectory::default(),
         }
     }
 

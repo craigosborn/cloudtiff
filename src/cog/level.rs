@@ -125,7 +125,7 @@ impl Level {
         y: f64,
     ) -> Result<(usize, f64, f64), CloudTiffError> {
         // TODO UnitFloat type that ensures valid range
-        if x < 0.0 || x > 1.0 || y < 0.0 || y > 1.0 {
+        if !((0.0..=1.0).contains(&x) && (0.0..=1.0).contains(&y)) {
             return Err(CloudTiffError::ImageCoordOutOfRange((x, y)));
         }
 

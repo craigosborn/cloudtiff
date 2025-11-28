@@ -27,12 +27,12 @@ pub fn render_level_from_crop<'a>(
         .unwrap_or(&cog.levels[0])
 }
 
-pub fn render_level_from_region<'a>(
-    cog: &'a CloudTiff,
+pub fn render_level_from_region(
+    cog: &CloudTiff,
     epsg: u16,
     region: &Region<f64>,
     dimensions: &(u32, u32),
-) -> CloudTiffResult<&'a Level> {
+) -> CloudTiffResult<Level> {
     // left top right bottom are in relative image coordinates (0-1 per axis)
     let (left, top, ..) = cog
         .projection
@@ -63,7 +63,7 @@ pub fn render_level_from_region<'a>(
         .map(|(i, _)| i)
         .unwrap_or(0);
 
-    cog.get_level(level_index)
+    cog.get_level(level_index).cloned()
 }
 
 pub fn tile_info_from_indices(level: &Level, indices: Vec<usize>) -> Vec<(usize, (u64, u64))> {
@@ -95,7 +95,7 @@ pub fn project_pixel_map(
     dimensions: &(u32, u32),
 ) -> CloudTiffResult<PixelMap> {
     let mut pixel_map = HashMap::new();
-    let output_proj = Proj::from_epsg_code(epsg).map_err(|e| ProjectionError::from(e))?;
+    let output_proj = Proj::from_epsg_code(epsg).map_err(ProjectionError::from)?;
     let dxdi = region.x.range() / dimensions.0 as f64;
     let dydj = region.y.range() / dimensions.1 as f64;
     for j in 0..dimensions.1 {
@@ -113,11 +113,11 @@ pub fn project_pixel_map(
             }
         }
     }
-    if pixel_map.len() == 0 {
-        return Err(CloudTiffError::RegionOutOfBounds((
+    if pixel_map.is_empty() {
+        Err(CloudTiffError::RegionOutOfBounds((
             region.as_tuple(),
             projection.bounds_in_proj(&output_proj)?.as_tuple(),
-        )));
+        )))
     } else {
         Ok(pixel_map)
     }

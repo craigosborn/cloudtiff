@@ -25,15 +25,17 @@ impl GeoKey {
     }
 }
 
-impl GeoKeyDirectory {
-    pub fn new() -> Self {
+impl Default for GeoKeyDirectory {
+    fn default() -> Self {
         Self {
             version: 1,
             revision: (1, 0),
             keys: vec![],
         }
     }
+}
 
+impl GeoKeyDirectory {
     pub fn parse(ifd: &Ifd) -> Result<Self, GeoTiffError> {
         // Directory is a tiff tag
         let directory_values = get_geo_tag_values(ifd, TagId::GeoKeyDirectory)?;
@@ -59,7 +61,7 @@ impl GeoKeyDirectory {
         let keys: Vec<GeoKey> = (0..key_count as usize)
             .map(|i| {
                 let entry_offset = (i + 1) * 4;
-                let code = directory_values[entry_offset + 0];
+                let code = directory_values[entry_offset];
                 let location = directory_values[entry_offset + 1];
                 let count = directory_values[entry_offset + 2];
                 let offset = directory_values[entry_offset + 3];
@@ -75,7 +77,7 @@ impl GeoKeyDirectory {
                             GeoKeyValue::Ascii(
                                 s[start..end]
                                     .to_string()
-                                    .trim_end_matches(|c| c == '|' || c == '\0')
+                                    .trim_end_matches(['|', '\0'])
                                     .to_string(),
                             )
                         }),
@@ -108,10 +110,10 @@ impl GeoKeyDirectory {
             TagData::Short(key_directory),
             endian,
         );
-        if ascii_params.len() > 0 {
+        if ascii_params.is_empty() {
             ifd.set_tag(TagId::GeoAsciiParams, TagData::Ascii(ascii_params), endian);
         }
-        if double_params.len() > 0 {
+        if !double_params.is_empty() {
             ifd.set_tag(
                 TagId::GeoDoubleParams,
                 TagData::Double(double_params),
@@ -167,7 +169,7 @@ impl GeoKeyDirectory {
                 GeoKeyValue::Undefined => directory.extend([0, 0, 0]),
             }
         }
-        if asciis.len() > 0 {
+        if asciis.is_empty() {
             asciis.push(0); // null terminated string
         }
 

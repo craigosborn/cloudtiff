@@ -23,15 +23,15 @@ pub enum TagData {
 }
 
 impl TagData {
-    pub fn from_string(s: &str) -> Self{
+    pub fn from_string(s: &str) -> Self {
         Self::Ascii(s.as_bytes().to_vec())
     }
 
-    pub fn from_short(v: u16) -> Self{
+    pub fn from_short(v: u16) -> Self {
         Self::Short(vec![v])
     }
 
-    pub fn from_long(v: u32) -> Self{
+    pub fn from_long(v: u32) -> Self {
         Self::Long(vec![v])
     }
 
@@ -55,6 +55,10 @@ impl TagData {
             Self::Ifd8(_) => 1,
             Self::Unknown(vec) => vec.len(),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn tag_type(&self) -> TagType {
@@ -87,14 +91,13 @@ impl TagData {
             Self::Long(vec) => endian.encode_all(vec),
             Self::Rational(vec) => vec
                 .iter()
-                .map(|(a, b)| {
+                .flat_map(|(a, b)| {
                     endian
                         .encode(*a)
                         .into_iter()
-                        .chain(endian.encode(*b).into_iter())
+                        .chain(endian.encode(*b))
                         .collect::<Vec<u8>>()
                 })
-                .flatten()
                 .collect(),
             Self::SByte(vec) => endian.encode_all(vec),
             Self::Undefined(vec) => endian.encode_all(vec),
@@ -102,14 +105,13 @@ impl TagData {
             Self::SLong(vec) => endian.encode_all(vec),
             Self::SRational(vec) => vec
                 .iter()
-                .map(|(a, b)| {
+                .flat_map(|(a, b)| {
                     endian
                         .encode(*a)
                         .into_iter()
-                        .chain(endian.encode(*b).into_iter())
+                        .chain(endian.encode(*b))
                         .collect::<Vec<u8>>()
                 })
-                .flatten()
                 .collect(),
             Self::Float(vec) => endian.encode_all(vec),
             Self::Double(vec) => endian.encode_all(vec),

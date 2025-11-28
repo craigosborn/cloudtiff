@@ -13,7 +13,7 @@ impl UnitFloat {
         let Ok(v) = value.try_into() else {
             return Err("Value could not be interpreted as f64".to_string());
         };
-        if v >= 0.0 && v <= 1.0 {
+        if (0.0..=1.0).contains(&v) {
             Ok(Self(v))
         } else {
             Err("Value must be on the closed range [0.0, 1.0]".to_string())
