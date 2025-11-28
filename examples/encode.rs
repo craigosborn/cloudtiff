@@ -1,8 +1,6 @@
-#[cfg(not(feature = "image"))]
-compile_error!("This example requires the 'image' feature");
+#![cfg(feature = "image")]
 
 use cloudtiff::{Encoder, Region};
-use image;
 use std::fs::File;
 
 const INPUT_FILE: &str = "data/demo.jpg";

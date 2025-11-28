@@ -1,14 +1,11 @@
-#[cfg(not(feature = "async"))]
-compile_error!("This example requires the ['image', 'async'] features");
+#![cfg(all(feature = "image", feature = "async"))]
+// This example requires the ['image', 'async'] features
 
 use cloudtiff::CloudTiff;
 use image::DynamicImage;
-use std::sync::Arc;
 use std::time::Instant;
-use tokio;
-use tokio::fs::File;
+use tokio::fs::File as AsyncFile;
 use tokio::sync::Mutex;
-use tracing_subscriber;
 
 const SAMPLE_COG: &str = "data/sample.tif";
 const OUTPUT_FILE: &str = "data/async.jpg";
@@ -24,7 +21,7 @@ async fn main() {
         .init();
 
     let t_cog = Instant::now();
-    let mut file = File::open(SAMPLE_COG).await.unwrap();
+    let mut file = AsyncFile::open(SAMPLE_COG).await.unwrap();
     let cog = CloudTiff::open_async(&mut file).await.unwrap();
     println!(
         "Opened COG in {:.3}ms",
@@ -32,12 +29,12 @@ async fn main() {
     );
 
     let t0 = Instant::now();
-    let thread_safe_file = Arc::new(Mutex::new(file));
+    let thread_safe_file = Mutex::new(file);
     let preview = cog
         .renderer()
         .with_mp_limit(PREVIEW_MEGAPIXELS)
         .with_async_reader(thread_safe_file)
-        .render_async()
+        .render()
         .await
         .unwrap();
     println!(

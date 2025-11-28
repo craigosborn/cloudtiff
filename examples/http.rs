@@ -1,15 +1,12 @@
-#[cfg(not(feature = "http"))]
-compile_error!("This example requires the 'http' feature");
+#![cfg(feature = "http")]
 
 use cloudtiff::{CloudTiff, HttpReader};
 use image::DynamicImage;
 use std::time::Instant;
-use tokio;
 
 const URL: &str = "http://sentinel-cogs.s3.amazonaws.com/sentinel-s2-l2a-cogs/9/U/WA/2024/8/S2A_9UWA_20240806_0_L2A/TCI.tif";
 const OUTPUT_FILE: &str = "data/http.jpg";
 const PREVIEW_MEGAPIXELS: f64 = 1.0;
-
 
 #[tokio::main]
 async fn main() {
@@ -22,9 +19,7 @@ async fn handler() {
     // COG
     let t_cog = Instant::now();
     let mut http_reader = HttpReader::new(URL).unwrap();
-    let cog = CloudTiff::open_async(&mut http_reader)
-        .await
-        .unwrap();
+    let cog = CloudTiff::open_async(&mut http_reader).await.unwrap();
     println!("Indexed COG in {}ms", t_cog.elapsed().as_millis());
     println!("{cog}");
 
@@ -33,8 +28,8 @@ async fn handler() {
     let preview = cog
         .renderer()
         .with_mp_limit(PREVIEW_MEGAPIXELS)
-        .with_async_range_reader(http_reader)
-        .render_async()
+        .with_async_reader(http_reader)
+        .render()
         .await
         .unwrap();
     println!(

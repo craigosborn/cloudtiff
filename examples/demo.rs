@@ -1,6 +1,4 @@
-#[cfg(not(feature = "image"))]
-compile_error!("This example requires the 'image' feature");
-
+#[cfg(feature = "image")]
 use cloudtiff::CloudTiff;
 use image::DynamicImage;
 use std::fs::File;
@@ -25,11 +23,14 @@ fn save_preview(mut file: File) {
         t_cog.elapsed().as_micros() as f64 / 1000.0
     );
 
+    // optional on unix
+    let file = std::sync::Mutex::new(file);
+
     let t_preview = Instant::now();
     let preview = cog
         .renderer()
         .with_mp_limit(PREVIEW_MEGAPIXELS)
-        .with_reader(file)
+        .with_reader(&file)
         .render()
         .unwrap();
     println!(

@@ -1,5 +1,4 @@
-#[cfg(not(feature = "s3"))]
-compile_error!("This example requires the 's3' feature");
+#![cfg(feature = "s3")]
 
 use aws_config::{self, Region};
 use aws_sdk_s3::{config::Config, Client};
@@ -7,7 +6,6 @@ use cloudtiff::{CloudTiff, S3Reader};
 use image::DynamicImage;
 use std::io::{self, Write};
 use std::time::Instant;
-use tokio;
 
 // https://docs.rs/object_store/0.11.0/object_store/
 // https://crates.io/crates/aws-sdk-s3
@@ -23,7 +21,9 @@ async fn main() {
 
     // Ask to use AWS credentials
     let consent: &str = "ok";
-    print!(r#"This example will use your default AWS environmental credentials to make a request. Type "{consent}" to continue: "#);
+    print!(
+        r#"This example will use your default AWS environmental credentials to make a request. Type "{consent}" to continue: "#
+    );
     io::stdout().flush().unwrap();
     let mut input = String::new();
     io::stdin().read_line(&mut input).unwrap();
@@ -41,14 +41,14 @@ async fn main() {
     let client = Client::from_conf(config);
     let reader = S3Reader::new(client, BUCKET_NAME, OBJECT_NAME);
 
-    // Use S3 Reader to read a cloud tiff 
+    // Use S3 Reader to read a cloud tiff
     handler(reader).await;
 }
 
-async fn handler(mut source: S3Reader) {
+async fn handler(source: S3Reader) {
     // COG
     let t_cog = Instant::now();
-    let cog = CloudTiff::open_from_async_range_reader(&mut source)
+    let cog = CloudTiff::open_from_async_range_reader(&source)
         .await
         .unwrap();
     println!("Indexed COG in {}ms", t_cog.elapsed().as_millis());
@@ -58,8 +58,8 @@ async fn handler(mut source: S3Reader) {
     let preview = cog
         .renderer()
         .with_mp_limit(PREVIEW_MEGAPIXELS)
-        .with_async_range_reader(source)
-        .render_async()
+        .with_async_reader(source)
+        .render()
         .await
         .unwrap();
 

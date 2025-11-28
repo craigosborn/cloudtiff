@@ -1,4 +1,3 @@
-use cloudtiff;
 use std::env;
 use std::fs::File;
 use std::io::BufReader;
@@ -21,5 +20,4 @@ fn main() {
 
     println!("Diesecting COG:");
     cloudtiff::disect(reader).unwrap();
-
 }

@@ -1,5 +1,4 @@
-#[cfg(not(feature = "http"))]
-compile_error!("This example requires the 'http' feature");
+#![cfg(feature = "http")]
 
 use cloudtiff::{AsyncReadRange, HttpReader};
 use std::time::Instant;
@@ -23,7 +22,7 @@ async fn main() {
 
     // B
     let t0 = Instant::now();
-    reader.read(&mut buf).await.unwrap();
+    reader.read_exact(&mut buf).await.unwrap();
     println!(
         "AsyncRead      in {:.3}ms: 0x{:02X?}",
         t0.elapsed().as_secs_f32() * 1e3,
@@ -41,7 +40,7 @@ async fn main() {
 
     // B
     let t0 = Instant::now();
-    reader.read(&mut buf).await.unwrap();
+    reader.read_exact(&mut buf).await.unwrap();
     println!(
         "AsyncRead      in {:4.3}ms: 0x{:02X?}",
         t0.elapsed().as_secs_f32() * 1e3,
