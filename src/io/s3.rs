@@ -31,7 +31,11 @@ impl fmt::Debug for S3Reader {
 }
 
 impl AsyncReadRange for S3Reader {
-    fn read_range_async<'a>(&'a self, start: u64, buf: &'a mut [u8]) -> BoxFuture<Result<usize>> {
+    fn read_range_async<'a>(
+        &'a self,
+        start: u64,
+        buf: &'a mut [u8],
+    ) -> BoxFuture<'a, Result<usize>> {
         let n = buf.len();
         let end = start + n as u64 - 1; // GOTCHA byte range includes end
         let request_builder = self.request.clone().range(format!("bytes={start}-{end}"));

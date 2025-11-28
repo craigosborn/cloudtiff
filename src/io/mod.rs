@@ -28,7 +28,6 @@ pub trait ReadRange {
     /// Provided methods
     ///   fn read_range_exact(&self, start: u64, buf: &mut [u8]) -> Result<()> { ... }
     ///   fn read_range_to_vec(&self, start: u64, end: u64) -> Result<()> { ... }
-
     fn read_range(&self, start: u64, buf: &mut [u8]) -> Result<usize>;
 
     fn read_range_exact(&self, start: u64, buf: &mut [u8]) -> Result<()> {
@@ -47,7 +46,7 @@ pub trait ReadRange {
     fn read_range_to_vec(&self, start: u64, end: u64) -> Result<Vec<u8>> {
         let n = (end - start) as usize;
         let mut buf = vec![0; n];
-        let _bytes_read = self.read_range_exact(start, &mut buf)?;
+        self.read_range_exact(start, &mut buf)?;
         Ok(buf)
     }
 }
@@ -56,9 +55,17 @@ impl<R: Read + Seek> ReadRange for Mutex<R> {
     fn read_range(&self, start: u64, buf: &mut [u8]) -> Result<usize> {
         let mut locked_self = self
             .lock()
-            .map_err(|e| Error::new(ErrorKind::Other, format!("{e:?}")))?;
+            .map_err(|e| std::io::Error::other(format!("{e:?}")))?;
         locked_self.seek(std::io::SeekFrom::Start(start))?;
         locked_self.read(buf)
+    }
+}
+
+#[cfg(unix)]
+impl ReadRange for std::fs::File {
+    fn read_range(&self, start: u64, buf: &mut [u8]) -> std::io::Result<usize> {
+        use std::os::unix::fs::FileExt;
+        self.read_at(buf, start)
     }
 }
 
@@ -84,7 +91,6 @@ mod not_sync {
         /// Provided methods
         ///   fn read_range_exact(&self, start: u64, buf: &mut [u8]) -> Result<()> { ... }
         ///   fn read_range_to_vec(&self, start: u64, end: u64) -> Result<()> { ... }
-
         fn read_range_async<'a>(
             &'a self,
             start: u64,
@@ -110,7 +116,7 @@ mod not_sync {
             .boxed()
         }
 
-        fn read_range_to_vec_async(&self, start: u64, end: u64) -> BoxFuture<Result<Vec<u8>>> {
+        fn read_range_to_vec_async(&self, start: u64, end: u64) -> BoxFuture<'_, Result<Vec<u8>>> {
             let n = (end - start) as usize;
             Box::pin(async move {
                 let mut buf = vec![0; n];
